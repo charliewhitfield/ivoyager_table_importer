@@ -18,7 +18,7 @@ It provides several specific table file formats that allow:
 
 File and table formats are described below.
 
-**Table Editor Warning!** Most .csv/.tsv file editors will "interpret" and modify cell values. For example, Excel will change "1.32712440018e20" to "1.33E+20" in your saved file without warning, and it's very hard to stop it from doing so! One editor that does NOT change your data is [Rons Data Edit](https://www.ronsplace.ca/Products/RonsDataEdit). It's free for files with up to 1000 rows, or pay for "pro" unlimited.
+**Table Editor Warning!** Most .csv/.tsv file editors will "interpret" and modify cell values, especially if it thinks the value is a number. For example, Excel will change "1.32712440018e20" to "1.33E+20" in your saved file without warning, and it's very hard to stop it from doing so! One editor that does NOT change your data is [Rons Data Edit](https://www.ronsplace.ca/Products/RonsDataEdit). It's free for files with up to 1000 rows, or pay for "pro" unlimited.
 
 ## General File Format
 
@@ -56,11 +56,11 @@ After field names and before data, tables can have the following header rows in 
    * `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ',' (no space) and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Blank cells will be imputed with `Default` value or an empty (but correctly typed) array.
 * `Default` (optional): Default values must be blank or follow Type rules above. If non-blank, this value is imputed for any blank cells in the column.
 * `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, convertes the table value to [SI base units](https://en.wikipedia.org/wiki/International_System_of_Units) internally. Unit symbols can be added or internal representation changed by modifying or replacing dictionary 'unit_multipliers' or 'unit_lambdas' (the latter handles oddities like °C, °F or dB).
-* `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-blank cells with specified text. To prefix the column 0 implicit 'name' field, use `Prefix/<value>`. E.g., `Prefix/PLANET_` is used in our [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all row names with 'PLANET_'.
+* `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-blank cells with specified text. To prefix the column 0 implicit 'name' field, use `Prefix/<entity prefix>`. E.g., we use `Prefix/PLANET_` in our [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all entity names with 'PLANET_'.
 
 #### Data Rows
 
-* **Entity Name (optional).** The left-most 0-column is special. It can either specify an entity name or be blank, but entity name must be consistently present or absent for the entire table. If present, entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<value>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can get the row number using `IVTableData.enumerations[<row name>]` or obtain an enum-like dictionary for a table's entity names using `IVTableData.get_row_name_dictionary(<table name>)`.
+* **Entity Name (optional).** The left-most 0-column is special. It can either specify an entity name or be blank, but entity name must be consistently present or absent for the entire table! If present, entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<entity name>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can obtain the row number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary for a table's entity names using `IVTableData.get_entity_enumeration(table_name)`.
 
 All data cells have some processing on import and may have further post-processing:
 * Double-quotes (") will be removed if they enclose the cell on both ends.
@@ -71,7 +71,8 @@ All data cells have some processing on import and may have further post-processi
 
 For scientific apps (maybe not so much for games) it is useful to know and correctly represent data precision in GUI. To obtain a float value's original table precision in siginificant digits, set `IVTableData.keep_precision = true` and access via `IVTableData.precisions` dictionary or specific 'get_precision' methods.
 
-Example precision from table cell text (note again that Excel will ruin these!):
+Example precision from table cell text:
+
 * '1e3' (1 significant digit)
 * '1000' (1 significant digit)
 * '1100' (2 significant digits)
@@ -82,9 +83,11 @@ Example precision from table cell text (note again that Excel will ruin these!):
 * '0.0010' (2 significant digits)
 * Any number prefixed with '~' will be interpreted as a 'zero-precision' number (0 significant digits). Our Planetarium displays these as, for example, '~1 km'.
 
+ (Note again that Excel and many other editors will modify cells that it thinks are numbers and ruin precision!)
+
 #### Internal Representation and Data Access
 
-Processed data for each table is held in a dictionary-of-field-arrays structure. Each field-array is statically typed as specified by field Type. The table dictionary can be obtained by `IVTableData.tables[<table name>]`. 
+Processed data for each table is held in a dictionary-of-field-arrays structure. Each field-array is statically typed as specified by field Type. The table dictionary can be obtained by `IVTableData.tables[table_name]`. 
 
 ## DB_ENTITIES_MOD Format
 
@@ -96,7 +99,9 @@ Rules exactly follow rules for DB_ENTITIES except that entity names may or may n
 
 Specifies a single-column 'enumeration' table. No other file directives can be present.
 
-You can obtain row_number using IVTableData.enumerations[entity_name]. Or you can obtain an enum-like dictionary structure using IVTableData.get_enumeration(table_name).
+This is essentially the same as DB_ENTITIES except that only the 0-column is allowed, so we are creating table enumerations with no data. The only header that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
+
+You can obtain row_number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary structure using IVTableData.get_entity_enumeration(table_name).
 
 ## WIKI_TITLES Format
 
