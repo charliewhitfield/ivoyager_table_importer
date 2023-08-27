@@ -35,6 +35,10 @@ Table format is specified by one of: `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD
 
 Any line starting with '#' is ignored. Additionally, entire columns are ignored if the column 'field' name begins with '#'.
 
+#### End-of-File
+
+The file should end with a '#' line. This is really a workaround for an unsolved bug where the last line is sometimes not read. (Perhaps Rons Data Edit is to blame. I'm not sure...)
+
 ## DB_ENTITIES Format
 
 This is the default table format, assumed if no table directives are present. It is a database-style entities (rows) by fields (columns) table. Entities may or may not have names. If present, entity names are treated as enumerations, which are accessible in other tables and must be globally unique. See example table [here](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv).
@@ -81,14 +85,14 @@ For scientific or educational apps it is important to know and correctly represe
 Example precision from table cell text:
 
 * '1e3' (1 significant digit)
+* '1.000e3' (4 significant digits)
 * '1000' (1 significant digit)
 * '1100' (2 significant digits)
-* '1.000e3' (4 significant digits)
 * '1000.' (4 significant digits)
 * '1000.0' (5 significant digits)
 * '1.0010' (5 significant digits)
 * '0.0010' (2 significant digits)
-* Any number prefixed with '~' will be interpreted as a 'zero-precision' number (0 significant digits). Our Planetarium displays these as, for example, '~1 km'.
+* **Any** number prefixed with '~' (0 significant digits). Our Planetarium displays these as, for example, '~1 km'.
 
 ## DB_ENTITIES_MOD Format
 
