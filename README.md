@@ -60,7 +60,7 @@ After field names and before data, tables can have the following header rows in 
 
 #### Data Rows
 
-* **Entity Name (optional).** The left-most 0-column is special. It can either specify an entity name or be blank, but entity name must be consistently present or absent for the entire table! If present, entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<entity name>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can obtain the row number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary for a table's entity names using `IVTableData.get_entity_enumeration(table_name)`.
+* **Entity Name (optional).** The left-most 0-column is special. It can either specify an entity name or be blank, but entity name must be consistently present or absent for the entire table! If present, entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<entity prefix>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can obtain the row number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary for a table's entity names using `IVTableData.get_entity_enumeration(table_name)`.
 
 All data cells have some processing on import and may have further post-processing:
 * Double-quotes (") will be removed if they enclose the cell on both ends.
