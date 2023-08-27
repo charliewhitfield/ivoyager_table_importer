@@ -76,7 +76,7 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 #### Float Precision
 
-For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original table precision in siginificant digits, set `IVTableData.keep_precision = true` and access via `IVTableData.precisions` dictionary or specific 'get_precision' methods.
+For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original table precision in siginificant digits, set `IVTableData.keep_precision = true` and access via `IVTableData.precisions` dictionary or specific 'get_precision' methods. (It's up to you to use precision in your GUI display. Keep in mind that unit conversion will cause values like '1.00001' if you don't do any string formatting.)
 
 Example precision from table cell text:
 
@@ -89,8 +89,6 @@ Example precision from table cell text:
 * '1.0010' (5 significant digits)
 * '0.0010' (2 significant digits)
 * Any number prefixed with '~' will be interpreted as a 'zero-precision' number (0 significant digits). Our Planetarium displays these as, for example, '~1 km'.
-
- (Note again that Excel and many other editors will modify cells that it thinks are numbers and ruin precision!)
 
 ## DB_ENTITIES_MOD Format
 
@@ -106,7 +104,7 @@ This is a single-column 'enumeration'-only table.
 
 The format can be optionally specified using `@ENUMERATION`. This is optional because the importer will attempt to read any single-column table as an ENUMERATION format.
 
-This is essentially a DB_ENTITIES format with only the 0-column: it creates entities enumerations with no data. There is no row for field names and the only header that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
+This is essentially a DB_ENTITIES format with only the 0-column: it creates entities enumerations with no data. There is no header row for field names and the only header tag that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
 
 As for DB_ENTITIES, you can obtain row_number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary of entity names using IVTableData.get_entity_enumeration(table_name).
 
@@ -116,7 +114,7 @@ This format can add items to the wiki lookup dictionary not present in DB_ENTITI
 
 Specify this table using `@WIKI_LOOKUP`.
 
-The format is the same as DB_ENTITIES except that fields can include only 'en.wiki', 'fr.wiki', etc., and the only header allowed is `Prefix`. Prefix the 0-column by entering the header tag as `Prefix/<0-column prefix>`. The 0-column may contain any text and is **not** used to create entity enumerations.
+The format is the same as DB_ENTITIES except that fields can include only 'en.wiki', 'fr.wiki', etc., and the only header tag allowed is `Prefix`. Prefix the 0-column by entering the header tag as `Prefix/<0-column prefix>`. The 0-column may contain any text and is **not** used to create entity enumerations.
 
 For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses this table type to create hyperlinks to Wikipedia.org pages for 'non-entity' items such as 'Orbital_eccentricity', 'Longitude_of_the_ascending_node', etc. Alternatively, the lookup could be used for an internal game wiki.
 
