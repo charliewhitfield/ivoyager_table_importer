@@ -91,21 +91,25 @@ Processed data for each table is held in a dictionary-of-field-arrays structure.
 
 ## DB_ENTITIES_MOD Format
 
-This table modifies an existing DB_ENTITIES table. It can add entities or fields, or overwrite existing data.
+This table modifies an existing DB_ENTITIES table. It can add entities or fields or overwrite existing data.
 
-Rules exactly follow rules for DB_ENTITIES except that entity names may or may not already exist. If an entity name already exists, the mod table data will overwrite existing values. Otherwise, a new entity/row is added to the existing table. Similarly, field names may or may not already exist. If a new field/column is specified, then all previously existing entities (that are absent in the mod table) will be assigned the default value for this field.
+Specify this table using `@DB_ENTITIES_MOD`, tab delimiter, `<existing_table_name>` (where existing_table_name is the table name, not file name -- e.g., 'planets', not 'planets.tsv').
+
+Rules exactly follow DB_ENTITIES except that entity names _must_ be present and they _may or may not already exist_ in the DB_ENTITIES table being modified. If an entity name already exists, the mod table data will overwrite existing values. Otherwise, a new entity/row is added to the existing table. Similarly, field names may or may not already exist. If a new field/column is specified, then all previously existing entities (that are absent in the mod table) will be assigned the default value for this field.
 
 ## ENUMERATION Format
 
-Specifies a single-column 'enumeration' table. No other file directives can be present.
+This is a single-column 'enumeration'-only table.
 
-This is essentially the same as DB_ENTITIES except that only the 0-column is allowed, so we are creating table enumerations with no data. The only header that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
+The format can be optionally specified using `@ENUMERATION`. This is optional because the importer will attempt to read any single-column table as an ENUMERATION format.
 
-You can obtain row_number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary structure using IVTableData.get_entity_enumeration(table_name).
+This is essentially a DB_ENTITIES format with only the 0-column: it creates entities enumerations with no data. There is no row for field names and the only header that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
+
+As for DB_ENTITIES, you can obtain row_number using `IVTableData.enumerations[entity_name]` or an enum-like dictionary using IVTableData.get_entity_enumeration(table_name).
 
 ## WIKI_TITLES Format
 
-Columns 'en.wiki', etc., provide localized translation of text keys into wiki title keys for external or internal wiki access. No other file directives can be present.
+Columns 'en.wiki', etc., provide localized translation of text keys into wiki title keys for external or internal wiki access.
 
 ## ENUM_X_ENUM Format
 
