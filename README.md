@@ -8,10 +8,10 @@ This table importer & reader is maintained for [I, Voyager's](https://github.com
 
 It provides several specific table file formats that allow:
 * Specification of data `Type` so that all table values are correctly converted to statically typed internal values.
-* Specification of data `Default` to reduce table clutter. Fields that are moslty a particular value can be left mostly empty.
+* Specification of data `Default` to reduce table clutter. Fields that are mostly a particular value can be left mostly empty.
 * Specification of data `Prefix` to reduce enumeration text size. E.g., shorten 'PLANET_MERCURY', 'PLANET_VENUS', 'PLANET_EARTH', ..., to 'MERCURY', 'VENUS', 'EARTH', ....
 * Specification of float `Unit` so file data can be entered in the most convenient units while maintaining consistent internal representation.
-* Enumerations that may reference project enum **or** table-defined entity names. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _**in any table**_ because 'PLANET_EARTH' is row 3 in planets.tsv.
+* **Enumerations** that may reference project enums _or_ table-defined entity names. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _in any table_ because 'PLANET_EARTH' is row 3 in planets.tsv.
 * 'Mod' tables that modify existing tables.
 * [Optionally] Construction of a wiki lookup dictionary to use for an internal or external wiki.
 * [For scientific apps, mostly] Determination of float significant digits from file text, so precision can be correctly displayed even after unit conversion.
@@ -27,17 +27,13 @@ We currently support only tab-delimited files with extension *.tsv. (Rons Data E
 
 #### Table Directives
 
-Any line starting with '@' is read as a table directive, which is used to specify one of several table formats and provide additional format-specific instructions. These can be at any line in the file. (It's convenient to include these at the end as many table viewers, including GitHub, assume field names in the top line.)
+Any line starting with '@' is read as a table directive, which is used to specify one of several table formats and provide additional format-specific instructions. These can be at any line in the file. It's convenient to include these at the end as many table viewers, including GitHub web pages, assume field names in the top line.
 
-Table format is specified by one of: `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`. Some table formats allow or require additional specific directives (see formats below).
+Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, followed by the table name in the next cell to the right (if omitted, table name is taken from the base file name). Some table formats allow or require additional specific directives (see formats below).
 
 #### Comments
 
 Any line starting with '#' is ignored. Additionally, entire columns are ignored if the column 'field' name begins with '#'.
-
-#### End-of-File
-
-The file should end with a '#' line. This is really a workaround for an unsolved bug where the last line is sometimes not read. (Perhaps Rons Data Edit is to blame. I'm not sure...)
 
 ## DB_ENTITIES Format
 
@@ -60,7 +56,7 @@ After field names and before data, tables can have the following header rows in 
    * `FLOAT` - See WARNING about Excel above; if you must use it, then prefix all numbers with ' or _ to prevent modification. 'E' or 'e' are ok. '?' will be converted to INF. A '~' prefix is allowed and affects float precision (see below). Empty cells will be imputed with `Default` value or NAN.
    * `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ',' (no space) and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Empty cells will be imputed with `Default` value or an empty (but correctly typed) array.
 * `Default` (optional): Default values must be empty or follow Type rules above. If non-empty, this value is imputed for any empty cells in the column.
-* `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, convertes the table value to [SI base units](https://en.wikipedia.org/wiki/International_System_of_Units) internally. Unit symbols can be added or internal representation changed by modifying or replacing dictionary 'unit_multipliers' or 'unit_lambdas' (the latter handles oddities like °C, °F or dB).
+* `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts the table value to [SI base units](https://en.wikipedia.org/wiki/International_System_of_Units) internally. Unit symbols can be added or internal representation changed by modifying or replacing dictionary 'unit_multipliers' or 'unit_lambdas' (the latter handles oddities like °C, °F or dB).
 * `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-empty cells with specified text. To prefix the column 0 implicit 'name' field, use `Prefix/<entity prefix>`. E.g., we use `Prefix/PLANET_` in our [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all entity names with 'PLANET_'.
 
 #### Data Rows
@@ -80,7 +76,7 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 #### Float Precision
 
-For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original table precision in siginificant digits, set `IVTableData.keep_precision = true` and access via `IVTableData.precisions` dictionary or specific 'get_precision' methods. (It's up to you to use precision in your GUI display. Keep in mind that unit conversion will cause values like '1.00001' if you don't do any string formatting.)
+For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original table precision in significant digits, set `IVTableData.keep_precision = true` and access via `IVTableData.precisions` dictionary or specific 'get_precision' methods. (It's up to you to use precision in your GUI display. Keep in mind that unit conversion will cause values like '1.00001' if you don't do any string formatting.)
 
 Example precision from table cell text:
 
