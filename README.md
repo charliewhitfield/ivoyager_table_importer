@@ -1,6 +1,6 @@
 # I, Voyager - Table Importer
 
-**_This is a Work-in-Progress addon. The functionality currently exists in I, Voyager's core submodule 'ivoyager', but the plan is to separate it out as a Godot Editor plugin. See proposal [here](https://github.com/orgs/ivoyager/discussions/11)._**
+**_This is a Work-in-Progress addon. It currently works as a submodule in an addons directory, but it's not yet a proper Godot Editor plugin. See proposal [here](https://github.com/orgs/ivoyager/discussions/11)._**
 
 **_WIP readme for the plugin follows..._**
 
@@ -29,7 +29,9 @@ Download, extract, and add 'ivoyager_table_importer' to your project's 'addons/'
 
 The latter is recommended so you can maintain version control without need for downloading, extracting, copy/pasting, etc.
 
-**WIP - This will change when it is a real editor plugin!** We suggest you then add addons/ivoyager_table_importer/table_data.gd as an autoload named 'IVTableData'. Use IVTableData.import_tables() and IVTableData.postprocess_tables() specifying tables to process, unit-conversion dictionaries (or use defaults), and other options.
+**WIP - This will change when it is a real editor plugin!** We suggest you then add addons/ivoyager_table_importer/table_data.gd as an autoload named 'IVTableData'. All postprocessed, typed data can be accessed via IVTableData.
+
+Use IVTableData.import_tables() and IVTableData.postprocess_tables() specifying tables to process, unit-conversion dictionaries (or use defaults), and other options.
 
 ## General File Format for Tables
 
