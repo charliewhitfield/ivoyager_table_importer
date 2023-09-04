@@ -1,6 +1,6 @@
 # I, Voyager - Table Importer
 
-TL;DR, it imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed data that is statically typed, default-imputed, string-prefixed, unit-converted, and enumeration-to-integer-convered (using project- or table-defined enumerations), amongst other things. 
+TL;DR: It imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. Table processing imputes defaults, prefixes strings, converts floats by specified units, and converts text enumerations to integers (enumerations can be project or table-defined), amongst other things. 
 
 ## Installation
 
@@ -9,7 +9,7 @@ The plugin directory `ivoyager_table_importer` should be added _directly to your
 1. Download and extract the plugin, then add it (in its entirety) to your addons directory, creating an 'addons' directory in your project if needed.
 2. Add as a git submodule. From your project directory, use git command:  
     `git submodule add https://github.com/ivoyager/ivoyager_table_importer addons/ivoyager_table_importer`  
-    This method will allow you to version-control the plugin using git rather than downloading, extracting and manually moving directories. You'll be able to checkout any plugin commit (from within your project) or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
+    This method will allow you to version-control the plugin from within your project rather than moving directories manually. You'll be able to checkout any plugin commit or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
 
 (*Note: This differs from Godot doc's recomended plugin distribution, but allows us to version-control our plugins without manual directory operations.)
 
