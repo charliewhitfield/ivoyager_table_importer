@@ -1,4 +1,4 @@
-# table_units.gd
+# table_unit_defaults.gd
 # This file is part of I, Voyager
 # https://ivoyager.dev
 # *****************************************************************************
@@ -17,7 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-@static_unload
+@tool
 extends Object
 
 # This static class defines default units and dictionaries for converting table
