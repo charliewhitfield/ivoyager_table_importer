@@ -24,6 +24,9 @@ extends Resource
 # table_postprocessor.gd. After that, all processed table data is available in
 # autoload singleton 'IVTableData' (table_data.gd). The resourses are
 # de-referenced so they free themselves and go out of memory.
+#
+# Data here is preprocessed for compactness and for the needs of the
+# postprocessor. It isn't very usefull in its preprocessed form.
 
 enum TableDirectives {
 	# table formats
@@ -84,7 +87,6 @@ const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd
 @export var postprocess_types: Dictionary # ints indexed [field]
 @export var default_values: Dictionary # preprocessed data indexed [field] (if Default exists)
 @export var unit_names: Dictionary # StringNames indexed [field] (FLOAT fields if Unit exists)
-@export var precisions: Dictionary # ints indexed [field][row] (FLOAT fields)
 
 # enum x enum
 @export var array_of_arrays: Array[Array] # preprocessed data indexed [row_enum][column_enum]
@@ -93,14 +95,17 @@ const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd
 # path for debug asserts
 @export var path: String
 
+# indexing
+@export var str_indexing := {"" : 0} # empty is always idx 0
+var next_idx := 1
 
 
 func import_file(file: FileAccess, source_path: String) -> void:
 	path = source_path
 
 	# store data cells and set table_format
-	var cells := [] as Array[Array]
-	var comment_columns := [] as Array[int]
+	var cells: Array[Array] = []
+	var comment_columns: Array[int] = []
 	var n_data_columns: int
 	var file_length := file.get_length()
 	while file.get_position() < file_length:
@@ -205,7 +210,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			postprocess_types = {} # indexed by fields
 			default_values = {} # indexed by fields
 			unit_names = {} # indexed by FLOAT fields
-			precisions  = {} # structured as dict_of_field_arrays but only FLOAT fields
+#			precisions  = {} # structured as dict_of_field_arrays but only FLOAT fields
 	
 	# temp working dicts
 	var prefixes := {}
@@ -224,9 +229,10 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 	if !is_enumeration:
 		var line_array: Array[String] = cells[0]
 		assert(!line_array[0], "Left-most cell of field name header must be empty in " + path)
-		column_names = [&"name"] # will remove later if no entity names
+		column_names = []
 		for column in skip_column_0_iterator:
 			var field := StringName(line_array[column])
+			assert(field != &"name", "Use of 'name' as field is not allowed in " + path)
 			assert(!column_names.has(field), "Duplicate field name " + field)
 			if is_wiki_lookup:
 				assert(field.ends_with(".wiki"),
@@ -234,7 +240,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			column_names.append(field)
 		row += 1
 	
-	# process all rows after field names
+	# process rows after field names
 	while row < n_cell_rows:
 		
 		var line_array: Array[String] = cells[row]
@@ -247,10 +253,9 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 						"'Type' doesn't belong in ENUMERATION table format in " + path)
 				assert(!is_wiki_lookup,
 						"'Type' doesn't belong in WIKI_LOOKUP table format in " + path)
-				postprocess_types[&"name"] = TYPE_STRING_NAME
 				for column in skip_column_0_iterator:
 					assert(line_array[column], "All fields must have 'Type' in " + path)
-					var field := column_names[column]
+					var field := column_names[column - 1]
 					postprocess_types[field] = _get_postprocess_type(line_array[column])
 				has_types = true
 				row += 1
@@ -263,7 +268,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 						"'Unit' doesn't belong in WIKI_LOOKUP table format in " + path)
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
-						var field := column_names[column]
+						var field := column_names[column - 1]
 						unit_names[field] = StringName(line_array[column]) # verify is FLOAT below
 				row += 1
 				continue
@@ -275,7 +280,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 						"'Default' doesn't belong in WIKI_LOOKUP table format in " + path)
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
-						var field := column_names[column]
+						var field := column_names[column - 1]
 						raw_defaults[field] = line_array[column] # preprocess below
 				row += 1
 				continue
@@ -284,12 +289,10 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 				if line_array[0].length() > 6:
 					assert(line_array[0][6] == "/",
 							"Bad Prefix construction %s in %s" % [line_array[0], path])
-					# column 0 prefix is the entity_prefix
 					entity_prefix = line_array[0].trim_prefix("Prefix/")
-					prefixes[&"name"] = entity_prefix
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
-						var field := column_names[column]
+						var field := column_names[column - 1]
 						prefixes[field] = line_array[column]
 				row += 1
 				continue
@@ -314,13 +317,9 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 				var preprocess_type: int
 				if !is_wiki_lookup:
 					var postprocess_type: int = postprocess_types[field]
-					if postprocess_type == TYPE_FLOAT:
-						var precision_array := Array([], TYPE_INT, &"", null)
-						precision_array.resize(n_rows)
-						precisions[field] = precision_array
 					preprocess_type = _get_preprocess_type(postprocess_type)
 				else:
-					preprocess_type = TYPE_STRING_NAME
+					preprocess_type = TYPE_INT
 				var field_array := Array([], preprocess_type, &"", null)
 				field_array.resize(n_rows)
 				dict_of_field_arrays[field] = field_array
@@ -339,22 +338,22 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			assert(line_array[0], "Missing expected row name in " + path)
 		else:
 			assert(!line_array[0],
-					"Inconsistent use of entity name; must be all or none in " + path)
+					"Inconsistent use of row name; must be all or none in " + path)
 		
 		if has_row_names:
-			var prefix: String = prefixes.get(&"name", "")
-			var row_name := StringName(prefix + line_array[0])
+#			var prefix: String = prefixes.get(&"name", "")
+			var row_name := StringName(entity_prefix + line_array[0])
 			assert(!row_names.has(row_name))
 			row_names.append(row_name)
 			if is_enumeration: # we only needed row name
 				content_row += 1
 				row += 1
 				continue
-			dict_of_field_arrays[&"name"][content_row] = row_name
+#			dict_of_field_arrays[&"name"][content_row] = row_name
 		
 		# process content columns
 		for column in skip_column_0_iterator:
-			var field := column_names[column]
+			var field := column_names[column - 1]
 			var raw_value: String = line_array[column]
 			var preprocess_value: Variant
 			if !raw_value and default_values.has(field):
@@ -365,28 +364,8 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 						else postprocess_types[field])
 				preprocess_value = _get_preprocess_value(raw_value, postprocess_type, prefix)
 			dict_of_field_arrays[field][content_row] = preprocess_value
-			
-			# float precision
-			if has_types and precisions.has(field):
-				if raw_value:
-					precisions[field][content_row] = _get_float_str_precision(raw_value)
-				elif default_values.has(field):
-					precisions[field][content_row] = _get_float_str_precision(raw_defaults[field])
-				else:
-					precisions[field][content_row] = -1
-		
 		content_row += 1
 		row += 1
-	
-	if !has_row_names:
-		column_names.remove_at(0)
-		dict_of_field_arrays.erase(&"name")
-		postprocess_types.erase(&"name")
-	
-	if is_wiki_lookup:
-		# we only want fields 'en.wiki', etc.
-		column_names.remove_at(0)
-		dict_of_field_arrays.erase(&"name")
 	
 	n_columns = 0 if is_enumeration else dict_of_field_arrays.size()
 
@@ -499,63 +478,53 @@ func _get_postprocess_type(type_str: StringName) -> int:
 
 
 func _get_preprocess_type(postprocess_type: int) -> int:
-	if postprocess_type == TYPE_INT:
-		return TYPE_STRING_NAME
+	if postprocess_type == TYPE_FLOAT:
+		return TYPE_STRING
 	if postprocess_type >= TYPE_MAX:
 		return TYPE_ARRAY
-	return postprocess_type
+	return TYPE_INT
 
 
-func _get_preprocess_value(raw_value: String, postprocess_type: int, prefix: String) -> Variant:
+func _get_preprocess_value(value: String, postprocess_type: int, prefix: String) -> Variant:
 	# Return is appropriate 'preprocess' type.
 	
 	match postprocess_type:
 		TYPE_BOOL:
-			if raw_value == "x" or raw_value.matchn("true"):
-				return true
-			assert(!raw_value or raw_value.matchn("false"),
-					"Unknown BOOL content '%s' in %s" % [raw_value, path])
-			return false
-		TYPE_STRING:
-			if !raw_value:
-				return ""
-			raw_value = raw_value.c_unescape() # does not process '\uXXXX'
-			raw_value = TableUtils.c_unescape_patch(raw_value)
-			if prefix:
-				return prefix + raw_value
-			return raw_value
-		TYPE_STRING_NAME:
-			if !raw_value:
-				return &""
-			if prefix:
-				return StringName(prefix + raw_value)
-			return StringName(raw_value)
+			if value == "x" or value.matchn("true"):
+				return 1
+			assert(value == "" or value.matchn("false"),
+					"Unknown BOOL content '%s' in %s" % [value, path])
+			return 0
+		
 		TYPE_FLOAT:
-			if !raw_value or raw_value.matchn("nan"):
-				return NAN
-			if raw_value == "?" or raw_value.matchn("inf"):
-				return INF
-			if raw_value.matchn("-inf"):
-				return -INF
-			var float_str := raw_value.lstrip("~").replace("E", "e").replace("_", "")
-			assert(float_str.is_valid_float(), "Invalid float '%s' in %s" % [raw_value, path])
-			return float_str.to_float()
-		TYPE_INT: # INT enumerations are common so we import all INTs as StringName
-			if !raw_value:
-				return &"-1"
+			# Store as a string so postprocessor can determine precision.
+			if value == "" or value.matchn("nan"):
+				return ""
+			if value == "?" or value.matchn("inf"):
+				return "?"
+			if value == "-?" or value.matchn("-inf"):
+				return "-?"
+			value = value.replace("E", "e").replace("_", "")
+			assert(value.lstrip("~").is_valid_float(), "Invalid float '%s' in %s" % [value, path])
+			return value
+		
+		TYPE_STRING, TYPE_STRING_NAME, TYPE_INT:
+			# Index all text types; INTs are often enumerations.
+			if value == "":
+				return 0
 			if prefix:
-				return StringName(prefix + raw_value) # e.g., 'PLANET_' + 'EARTH'
-			return StringName(raw_value)
+				return _get_str_index(prefix + value)
+			return _get_str_index(value)
 	
-	if postprocess_type >= TYPE_MAX: # raw_value encodes an array
+	if postprocess_type >= TYPE_MAX: # value encodes an array
 		var content_type := postprocess_type - TYPE_MAX
 		assert(content_type < TYPE_MAX, "Nested array type? " + path)
 		assert(content_type != TYPE_ARRAY, "Nested array type? " + path)
 		var content_import_type := _get_preprocess_type(content_type)
 		var result_array := Array([], content_import_type, &"", null)
-		if !raw_value:
+		if !value:
 			return result_array
-		var raw_array := raw_value.split(",")
+		var raw_array := value.split(",")
 		for raw_element in raw_array:
 			result_array.append(_get_preprocess_value(raw_element, content_type, prefix))
 		return result_array
@@ -564,40 +533,11 @@ func _get_preprocess_value(raw_value: String, postprocess_type: int, prefix: Str
 	return null
 
 
-func _get_float_str_precision(float_str: String) -> int:
-	# We ignore leading zeroes before the decimal place.
-	# We count trailing zeroes IF there is a decimal place.
-	match float_str:
-		"", "?", "INF", "-INF":
-			return -1
-	if float_str.begins_with("~"):
-		return 0
-	float_str = float_str.replace("_", "")
-	var length := float_str.length()
-	var n_digits := 0
-	var started := false
-	var n_unsig_zeros := 0
-	var deduct_zeroes := true
-	var i := 0
-	while i < length:
-		var chr: String = float_str[i]
-		if chr == ".":
-			started = true
-			deduct_zeroes = false
-		elif chr == "e":
-			break
-		elif chr == "0":
-			if started:
-				n_digits += 1
-				if deduct_zeroes:
-					n_unsig_zeros += 1
-		elif chr != "-":
-			assert(chr.is_valid_int(), "Unknown FLOAT character '%s' in %s" % [chr, path])
-			started = true
-			n_digits += 1
-			n_unsig_zeros = 0
-		i += 1
-	if deduct_zeroes:
-		n_digits -= n_unsig_zeros
-	return n_digits
+func _get_str_index(value: String) -> int:
+	var idx: int = str_indexing.get(value, -1)
+	if idx == -1:
+		idx = next_idx
+		str_indexing[value] = idx
+		next_idx += 1
+	return idx
 

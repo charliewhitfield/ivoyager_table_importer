@@ -51,7 +51,7 @@ func _enter_tree():
 	var version_str := VERSION
 	if version_str.ends_with("-dev"):
 		version_str += " " + str(VERSION_YMD)
-	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version_str)
+	print("IVoyager Table Importer v%s - https://ivoyager.dev" % version_str)
 
 
 func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multipliers := {},

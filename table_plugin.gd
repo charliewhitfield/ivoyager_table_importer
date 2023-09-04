@@ -39,7 +39,7 @@ func _enter_tree():
 
 
 func _exit_tree():
-	print("Removing I, Voyager - Table Importer...")
+	print("Removing IVoyager Table Importer...")
 	remove_custom_type("IVTableResource")
 	remove_import_plugin(table_importer)
 	table_importer = null
