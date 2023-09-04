@@ -1,4 +1,4 @@
-# table_importer_temp.gd
+# table_importer.gd
 # This file is part of I, Voyager
 # https://ivoyager.dev
 # *****************************************************************************
@@ -17,19 +17,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-extends RefCounted
+@tool
+extends EditorImportPlugin
 
 
-const TableResource := preload("res://addons/ivoyager_table_importer/table_resource.gd")
+const TableResource := preload("table_resource.gd")
 
 
+func _get_importer_name() -> String:
+	return "ivoyager.table_importer"
 
-func import(table_paths: Array[String], table_resources: Dictionary) -> void:
-	# DEPRECIATE: This is needed until we have a real editor importer.
 
-	for path in table_paths:
-		var table_res := TableResource.new()
-		table_res.import_table(path)
-		table_resources[table_res.table_name] = table_res
+func _get_visible_name() -> String:
+	return "IVoyager Table Format"
 
+
+func _get_recognized_extensions() -> PackedStringArray:
+	return ["tsv"]
+
+
+func _get_save_extension() -> String:
+	return "tres"
+
+
+func _get_resource_type() -> String:
+	return "IVTableResource"
+
+
+func _get_preset_count() -> int:
+	return 0
+
+
+func _get_preset_name(preset_index: int) -> String:
+	return "Default"
+
+
+func _get_import_options(path, preset_index) -> Array:
+	return []
+
+
+func _get_priority() -> float:
+	return 100.0
+
+
+func _get_import_order() -> int:
+	return 0
+
+
+func _import(source_path: String, save_path: String, options: Dictionary,
+		_r_platform_variants: Array, _r_gen_files: Array) -> Error:
+	var file = FileAccess.open(source_path, FileAccess.READ)
+	if !file:
+		return FileAccess.get_open_error()
+	var table_res := TableResource.new()
+	table_res.import_file(file, source_path)
+	
+	var filename := save_path + "." + _get_save_extension()
+	return ResourceSaver.save(table_res, filename) # , ResourceSaver.FLAG_COMPRESS)
 

@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
+@tool
 extends RefCounted
 
 
@@ -29,15 +30,18 @@ enum TableDirectives { # copy from table_resource.gd
 	ENUM_X_ENUM,
 	N_TABLE_FORMATS,
 	# specific directives
-	MODIFIES, # DB_ENTITIES_MOD only
-	TABLE_TYPE, # ENUM_X_ENUM only
-	TABLE_DEFAULT, # ENUM_X_ENUM only
-	TABLE_UNIT, # ENUM_X_ENUM only
-	TRANSPOSE, # ENUM_X_ENUM only
+	MODIFIES,
+	TABLE_TYPE,
+	TABLE_DEFAULT,
+	TABLE_UNIT,
+	TRANSPOSE,
+	# any file
+	DONT_PARSE, # do nothing (for debugging or under-construction table)
 }
 
-const TableResource := preload("res://addons/ivoyager_table_importer/table_resource.gd")
-const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd")
+
+const TableResource := preload("table_resource.gd")
+const TableUtils := preload("table_utils.gd")
 
 # TODO: Proper localization. I'm not sure if we're supposed to use get_locale()
 # from OS or TranslationServer, or how to do fallbacks for missing translations.
@@ -51,13 +55,12 @@ var _precisions: Dictionary # populated if enable_precisions (indexed as tables 
 var _enable_wiki: bool
 var _enable_precisions: bool
 
-# cleared when done
 var _table_defaults := {} # only tables that might be modified
 
 
-func postprocess(table_resources: Dictionary, table_names: Array[StringName],
-		project_enums: Array[Dictionary], tables: Dictionary, enumerations: Dictionary,
-		enumeration_dicts: Dictionary, wiki_lookup: Dictionary, precisions: Dictionary,
+func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
+		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
+		wiki_lookup: Dictionary, precisions: Dictionary,
 		enable_wiki: bool, enable_precisions: bool) -> void:
 	
 	_tables = tables
@@ -68,15 +71,19 @@ func postprocess(table_resources: Dictionary, table_names: Array[StringName],
 	_enable_wiki = enable_wiki
 	_enable_precisions = enable_precisions
 	
+	var table_resources: Array[TableResource] = []
+	for path in table_file_paths:
+		var table_res: TableResource = load(path)
+		table_resources.append(table_res)
+	
 	# move mod tables to end, but keep order otherwise
 	var i := 0
-	var stop := table_names.size()
+	var stop := table_resources.size()
 	while i < stop:
-		var table_name := table_names[i]
-		var table_resource: TableResource = table_resources[table_name]
-		if table_resource.table_format == TableDirectives.DB_ENTITIES_MOD:
-			table_names.remove_at(i)
-			table_names.append(table_name)
+		var table_res := table_resources[i]
+		if table_res.table_format == TableDirectives.DB_ENTITIES_MOD:
+			table_resources.remove_at(i)
+			table_resources.append(table_res)
 			stop -= 1
 		else:
 			i += 1
@@ -89,8 +96,7 @@ func postprocess(table_resources: Dictionary, table_names: Array[StringName],
 			enumeration_dicts[entity_name] = project_enum # needed for ENUM_X_ENUM
 	
 	# add/modify table enumerations
-	for table_name in table_names:
-		var table_res: TableResource = table_resources[table_name]
+	for table_res in table_resources:
 		
 		match table_res.table_format:
 			TableDirectives.DB_ENTITIES, TableDirectives.ENUMERATION:
@@ -99,8 +105,7 @@ func postprocess(table_resources: Dictionary, table_names: Array[StringName],
 				_modify_table_enumeration(table_res)
 	
 	# postprocess by format
-	for table_name in table_names:
-		var table_res: TableResource = table_resources[table_name]
+	for table_res in table_resources:
 		
 		match table_res.table_format:
 			TableDirectives.DB_ENTITIES:
@@ -111,8 +116,6 @@ func postprocess(table_resources: Dictionary, table_names: Array[StringName],
 				_add_wiki_lookup(table_res)
 			TableDirectives.ENUM_X_ENUM:
 				_postprocess_enum_x_enum(table_res)
-	
-	_table_defaults.clear()
 
 
 func _add_table_enumeration(table_res: TableResource) -> void:
@@ -320,9 +323,9 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 	var n_import_rows := table_res.n_rows
 	var n_import_columns:= table_res.n_columns
 	var import_array_of_arrays := table_res.array_of_arrays
-	var type := table_res.table_postprocess_type
-	var unit := table_res.table_unit_name
-	var import_default: Variant = table_res.table_default_value
+	var type: int = table_res.enum_x_enum_info[0]
+	var unit: StringName = table_res.enum_x_enum_info[1]
+	var import_default: Variant = table_res.enum_x_enum_info[2]
 	
 	var row_type := type if type < TYPE_MAX else TYPE_ARRAY
 	var postprocess_default: Variant = _get_postprocess_value(import_default, type, unit)

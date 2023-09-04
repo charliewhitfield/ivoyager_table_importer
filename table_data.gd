@@ -17,20 +17,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
+@tool
 extends Node
 
-# ADDON CONVERSION NOTES:
-# This class is intended to be an autoload singleton nameed 'IVTableData'.
-# Everything a user might need is here!
+# This node is loaded as singleton 'IVTableData' by table_plugin.gd.
+#
+# All user interface is here!
 
-const TableImporter := preload("res://addons/ivoyager_table_importer/table_importer.gd")
-const TablePostprocessor := preload("res://addons/ivoyager_table_importer/table_postprocessor.gd")
-const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd")
+const VERSION := "0.0.1-dev"
+const VERSION_YMD := 20230903
 
-# Table data dictionaries are populated only after postprocess_tables().
-# 'tables' is indexed by table_name, 'n_<table_name>' or 'prefix_<table_name>'
-# to get the table, number rows, or table entity prefix (if applicable). For
-# DB_ENTITIES tables, the table is a dictionary indexed [field_name][row_int].
+const TablePostprocessor := preload("table_postprocessor.gd")
+const TableUtils := preload("table_utils.gd")
+
+# Data dictionaries are populated only after postprocess_tables() is called.
+# You can access data directly in these dictionaries or use API below.
+#
+# For DB format tables, index as tables[table_name][field_name][row_int],
+# where row_int = enumerations[entity_name]
+#
+# For enum x enum format, index as tables[table_name][row_enum][col_enum].
+
 
 var tables := {} # postprocessed data
 var enumerations := {} # indexed by ALL entity names (which are globally unique)
@@ -38,26 +45,22 @@ var enumeration_dicts := {} # use table name or ANY entity name to get entity en
 var wiki_lookup := {} # populated if enable_wiki
 var precisions := {} # populated if enable_precisions (indexed as tables for FLOAT fields)
 
-# cleared after postprocess_tables()
-var table_resources: Dictionary
+
+func _enter_tree():
+	
+	var version_str := VERSION
+	if version_str.ends_with("-dev"):
+		version_str += " " + str(VERSION_YMD)
+	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version_str)
 
 
-# import & postprocess methods
-
-func import_tables(table_paths: Array) -> void:
-	# ADDON CONVERSION NOTES:
-	# We won't need an explicit call when we have an editor importer.
-	# The importer can populate 'table_resources' and this node need not know
-	# about TableImporter.
-	var table_paths_: Array[String] = Array(table_paths, TYPE_STRING, &"", null)
-	var table_importer := TableImporter.new()
-	table_importer.import(table_paths_, table_resources)
-
-
-func postprocess_tables(table_names: Array, project_enums := [], unit_multipliers := {},
+func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multipliers := {},
 		unit_lambdas := {}, enable_wiki := false, enable_precisions := false) -> void:
+	# Call this function to populate dictionaries with postprocessed data.
 	# See table_unit_defaults.gd for default unit conversion to SI base units.
-	var table_names_: Array[StringName] = Array(table_names, TYPE_STRING_NAME, &"", null)
+	
+	# Cast arrays here so user isn't forced to input typed arrays.
+	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
 	
 	# Set TableUtils conversion dictionaries here, or verify set, or set to defaults.
@@ -71,18 +74,16 @@ func postprocess_tables(table_names: Array, project_enums := [], unit_multiplier
 		TableUtils.unit_lambdas = unit_lambdas
 	if !TableUtils.unit_multipliers or !TableUtils.unit_lambdas:
 		# TableUnitDefaults will unload itself after this; we won't need it anymore
-		var UnitDefaults := preload("res://addons/ivoyager_table_importer/table_unit_defaults.gd")
+		var UnitDefaults := preload("table_unit_defaults.gd")
 		if !TableUtils.unit_multipliers:
 			TableUtils.unit_multipliers = UnitDefaults.unit_multipliers
 		if !TableUtils.unit_lambdas:
 			TableUtils.unit_lambdas = UnitDefaults.unit_lambdas
 	
 	var table_postprocessor := TablePostprocessor.new()
-	table_postprocessor.postprocess(table_resources, table_names_, project_enums_, tables,
+	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
 			enumerations, enumeration_dicts, wiki_lookup, precisions,
 			enable_wiki, enable_precisions)
-	
-	table_resources.clear() # no need to keep these in memory
 
 
 # For get functions, table is "planets", "moons", etc. Most get functions
