@@ -73,5 +73,5 @@ func _import(source_path: String, save_path: String, options: Dictionary,
 	table_res.import_file(file, source_path)
 	
 	var filename := save_path + "." + _get_save_extension()
-	return ResourceSaver.save(table_res, filename) # , ResourceSaver.FLAG_COMPRESS)
+	return ResourceSaver.save(table_res, filename)
 
