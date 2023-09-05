@@ -28,12 +28,12 @@ enum TableDirectives { # copy from table_resource.gd
 	ENUMERATION,
 	WIKI_LOOKUP,
 	ENUM_X_ENUM,
-	N_TABLE_FORMATS,
+	N_FORMATS,
 	# specific directives
 	MODIFIES,
-	TABLE_TYPE,
-	TABLE_DEFAULT,
-	TABLE_UNIT,
+	DATA_TYPE,
+	DATA_DEFAULT,
+	DATA_UNIT,
 	TRANSPOSE,
 	# any file
 	DONT_PARSE, # do nothing (for debugging or under-construction table)

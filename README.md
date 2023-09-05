@@ -1,6 +1,6 @@
 # I, Voyager - Table Importer
 
-TL;DR: It imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. Table processing imputes defaults, prefixes strings, converts floats by specified units, and converts text enumerations to integers (enumerations can be project or table-defined), amongst other things. 
+TL;DR: It imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. Table processing imputes defaults, prefixes strings, and converts floats by specified units and text enumerations to integers (enumerations can be project or table-defined), amongst other things. 
 
 ## Installation
 
@@ -54,9 +54,9 @@ We support only tab-delimited files with extension 'tsv'.
 
 Any line starting with '@' is read as a table directive, which is used to specify one of several table formats and provide additional format-specific instructions. These can be at any line in the file. It may be convenient to include these at the end as many table viewers (including GitHub web pages) assume field names in the top line.
 
-Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, optionally followed by the table name in the next cell to the right. If omitted, table name is taken from the base file name. Several table formats don't need a table format specifier as the parser can figure it out from the table itself. Some table formats allow or require additional specific directives. See below for format-specific directives.
+Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, optionally followed by '=' and then the table name. If omitted, table name is taken from the base file name (e.g., 'planets' for 'res://path/planets.tsv' file). Several table formats don't need a table format specifier as the importer can figure it out from the table itself. Some table formats allow or require additional specific directives. See details in format sections below. (' = ' is always ok in place of '='.)
 
-To prevent any table from being parsed (for debugging or because it is under construction) use `@DONT_PARSE`. 
+To prevent any table from being parsed (for debugging or because it is under construction) use `@DONT_PARSE`.
 
 #### Comments
 
@@ -69,11 +69,12 @@ Most .csv/.tsv file editors will 'interpret' and change your table data, especia
 
 ## DB_ENTITIES Format
 
-[Example Table.](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv)
+[Example Table](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv)
 
-You can _optionally_ specify this table using `@DB_ENTITIES`. However, this is the default table format assumed if no table directives are present. No other file directives are allowed (except `@DONT_PARSE` which can always be used).
+Optional specifier: `@DB_ENTITIES[=<table_name>]` (table_name defaults to the base file name)
+Optional directive: `@DONT_PARSE`
 
-This format has database-style entities (as rows) and fields (as columns). Entities may or may not have names. If present, entity names are treated as enumerations, which are accessible in other tables (in any field with Type=INT) and must be globally unique.
+This is the default table format assumed if no table directives are present. The format has database-style entities (as rows) and fields (as columns). Entities may or may not have names. If present, entity names are treated as enumerations, which are accessible in other tables (in any field with Type=INT) and must be globally unique.
 
 Processed data are structured as a dictionary-of-statically-typed-field-arrays. Access the dictionary directly or use 'get' methods in IVTableData.
 
@@ -127,9 +128,11 @@ Example precision from table cell text:
 
 (Example coming soon!)
 
-This table modifies an existing DB_ENTITIES table. It can add entities or fields or overwrite existing data.
+Optional specifier: `@DB_ENTITIES_MOD[=<table_name>]` (table_name defaults to the base file name)
+Required directive: `@MODIFIES=<table_name>`
+Optional directive: `@DONT_PARSE`
 
-You can _optionally_ specify this table using `@DB_ENTITIES_MOD`. However, this format requires the `@MODIFIES` directive and the parser will read the table as DB_ENTITIES_MOD format if `@MODIFIES` is present. The `@MODIFIES` directive must be followed (after tab delimiter) by the name of the table to be modified (use table name, not file name: e.g., 'planets' not 'planets.tsv').
+This table modifies an existing DB_ENTITIES table. It can add entities or fields or overwrite existing data. There can be any number of DB_ENTITIES_MOD tables that modify a single DB_ENTITIES table. The importer assumes this format if the `@MODIFIES` directive is present.
 
 Rules exactly follow DB_ENTITIES except that entity names _must_ be present and they _may or may not already exist_ in the DB_ENTITIES table being modified. If an entity name already exists, the mod table data will overwrite existing values. Otherwise, a new entity/row is added to the existing table. Similarly, field names may or may not already exist. If a new field/column is specified, then all previously existing entities (that are absent in the mod table) will be assigned the default value for this field.
 
@@ -137,9 +140,11 @@ Rules exactly follow DB_ENTITIES except that entity names _must_ be present and 
 
 (Example coming soon!)
 
-This is a single-column 'enumeration'-only table.
 
-The format can be _optionally_ specified using `@ENUMERATION`. This is optional because the importer will attempt to read any single-column table as an ENUMERATION format.
+Optional specifier: `@ENUMERATION[=<table_name>]` (table_name defaults to the base file name)
+Optional directive: `@DONT_PARSE`
+
+This is a single-column 'enumeration'-only table. The importer assumes this format if the table has only one column. 
 
 This is essentially a DB_ENTITIES format with only the 0-column: it creates entities enumerations with no data. There is no header row for field names and the only header tag that may be used (optionally) is `Prefix`. As for DB_ENTITIES, prefixing the 0-column is done by modifying the header tag as `Prefix/<entity prefix>`.
 
@@ -147,23 +152,28 @@ As for DB_ENTITIES, you can obtain row_number from the 'enumerations' dictionary
 
 ## WIKI_LOOKUP Format
 
-[Example Table.](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/wiki_extras.tsv)
+[Example Table](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/wiki_extras.tsv)
 
-This format can add items to the wiki lookup dictionary that were not added by DB_ENTITIES tables.
+Required specifier: `@WIKI_LOOKUP[=<table_name>]` (table_name defaults to the base file name)
+Optional directive: `@DONT_PARSE`
 
-This format _must_ be specified using `@WIKI_LOOKUP`.
+This format can add items to the wiki lookup dictionary that were not added by DB_ENTITIES or DB_ENTITIES_MOD tables.
 
-The format is the same as DB_ENTITIES except that fields can include only 'en.wiki', 'fr.wiki', etc., and the only header tag allowed is `Prefix`. Prefix the 0-column by entering the header tag as `Prefix/<0-column prefix>`. The 0-column may contain any text and is **not** used to create entity enumerations.
+The format is the same as DB_ENTITIES except that fields can include only localization-prefixed '.wiki' (e.g., 'en.wiki'), and the only header tag allowed is `Prefix`. Prefix the 0-column by entering the header tag as `Prefix/<0-column prefix>`. The 0-column may contain any text and is **not** used to create entity enumerations.
 
 For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses this table format to create hyperlinks to Wikipedia.org pages for concepts such as 'Orbital_eccentricity' and 'Longitude_of_the_ascending_node' (i.e., non-entity items that don't exist in a DB_ENTITIES table). Alternatively, the lookup could be used for an internal game wiki.
 
 ## ENUM_X_ENUM Format
 
-[Example Table.](https://github.com/t2civ/astropolis_public/blob/main/data/tables/compositions_resources_percents.tsv)
+[Example Table](https://github.com/t2civ/astropolis_public/blob/main/data/tables/compositions_resources_percents.tsv) (This is not quite right yet! Needs format update!)
 
-This format creates an array-of-arrays data structure where indexes are defined by a column enumeration and a row enumeration. All cells in the table have the same Type, Default and (for floats) Unit.
+Required specifier: `@ENUM_X_ENUM[=<table_name>]` (table_name defaults to the base file name)
+Required directive: `@DATA_TYPE=<Type>`
+Optional directives: `@DATA_DEFAULT=<Default>`, `@DATA_UNIT=<Unit>`, `@TRANSPOSE`, `@DONT_PARSE`
 
-This format _must_ be specified using `@ENUM_X_ENUM`. Specify Type, Default and Unit using `@TABLE_TYPE` (required), `@TABLE_DEFAULT` (optional) and `@TABLE_UNIT` (optional; FLOAT only). 
+This format creates an array-of-arrays data structure where data is indexed [row_enumeration][column_enumeration] (or the transpose if `@TRANSPOSE` is specified). All cells in the table have the same Type, Default and Unit (if applicable) specified by data directives above. If not specified, default 'nulls' for the six allowed Types are "", &"", false, NAN, -1 and [].
 
+Enumerations must be 'known' by the plugin, which means that they were added as row entity names by a DB_ENTITIES, DB_ENTITIES_MOD or ENUMERATION format table, or were added as a 'project_enum' dictionary in the `postprocess_tables()` call.
 
-WIP
+The resulting array-of-arrays structure will always have n x m rows and columns sized and ordered according to the enumeration, not the table. Data not specified in the table file (omited row or column entities) will be imputed with default value.
+

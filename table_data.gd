@@ -24,8 +24,8 @@ extends Node
 #
 # All user interface is here!
 
-const VERSION := "0.0.1"
-const VERSION_YMD := 20230904
+const VERSION := "0.0.2"
+const VERSION_YMD := 20230905
 
 const TablePostprocessor := preload("table_postprocessor.gd")
 const TableUtils := preload("table_utils.gd")

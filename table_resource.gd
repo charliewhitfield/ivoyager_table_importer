@@ -35,12 +35,12 @@ enum TableDirectives {
 	ENUMERATION,
 	WIKI_LOOKUP,
 	ENUM_X_ENUM,
-	N_TABLE_FORMATS,
+	N_FORMATS,
 	# specific directives
 	MODIFIES,
-	TABLE_TYPE,
-	TABLE_DEFAULT,
-	TABLE_UNIT,
+	DATA_TYPE,
+	DATA_DEFAULT,
+	DATA_UNIT,
 	TRANSPOSE,
 	# any file
 	DONT_PARSE, # do nothing (for debugging or under-construction table)
@@ -52,7 +52,7 @@ const ALLOWED_SPECIFIC_DIRECTIVES := [
 	[TableDirectives.MODIFIES],
 	[],
 	[],
-	[TableDirectives.TABLE_TYPE, TableDirectives.TABLE_DEFAULT, TableDirectives.TABLE_UNIT,
+	[TableDirectives.DATA_TYPE, TableDirectives.DATA_DEFAULT, TableDirectives.DATA_UNIT,
 			TableDirectives.TRANSPOSE],
 ]
 
@@ -61,6 +61,7 @@ const REQUIRES_ARGUMENT := [false, false, false, false, false, false,
 
 const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd")
 
+const VERBOSE := true # prints a single line on import
 
 @export var table_format := -1
 @export var table_name := &""
@@ -92,24 +93,28 @@ const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd
 @export var array_of_arrays: Array[Array] # preprocessed data indexed [row_enum][column_enum]
 @export var enum_x_enum_info: Array # [postprocess_type, unit_name, import_default]
 
-# path for debug asserts
-@export var path: String
-
 # indexing
 @export var str_indexing := {"" : 0} # empty is always idx 0
 var next_idx := 1
 
+# debug data
+@export var path: String
+var debug_pos := ""
+
 
 func import_file(file: FileAccess, source_path: String) -> void:
+	
 	path = source_path
-
+	
 	# store data cells and set table_format
 	var cells: Array[Array] = []
 	var comment_columns: Array[int] = []
 	var n_data_columns: int
 	var file_length := file.get_length()
+	var debug_row := -1
 	while file.get_position() < file_length:
 		var file_line := file.get_line()
+		debug_row += 1
 		
 		# skip comment lines
 		if file_line.begins_with("#") or file_line.begins_with('"#') or file_line.begins_with("'#"):
@@ -126,23 +131,29 @@ func import_file(file: FileAccess, source_path: String) -> void:
 		
 		# handle or store directives
 		if line_array[0].begins_with("@"):
-			var directive_str := line_array[0].trim_prefix("@")
-			assert(TableDirectives.has(directive_str),
-				"Unknown table directive %s in %s" % [line_array[0], path])
-			var directive: int = TableDirectives[directive_str]
+			var dir_str := line_array[0].trim_prefix("@")
+			var dir_split := dir_str.split("=")
+			assert(dir_split.size() <= 2,
+					">1 '=' in directive '%s' in %s, %s" % [line_array[0], path, debug_row])
+			var split0 := dir_split[0].rstrip(" ")
+			var arg := dir_split[1].lstrip(" ") if dir_split.size() > 1 else ""
+			assert(TableDirectives.has(split0),
+					"Unknown table directive '@%s' in %s, %s" % [split0, path, debug_row])
+			var directive: int = TableDirectives[split0]
 			if directive == TableDirectives.DONT_PARSE:
+				if VERBOSE:
+					print("Importing (but not parsing!) " + path)
 				return
-			var directive_arg := line_array[1] if line_array.size() > 1 else ""
-			if directive < TableDirectives.N_TABLE_FORMATS:
-				assert(table_format == -1, ">1 format specified in " + path)
+			if directive < TableDirectives.N_FORMATS:
+				assert(table_format == -1, ">1 format specified in %s, %s" % [path, debug_row])
 				table_format = directive
-				if directive_arg: # otherwise, we'll get table name from file name
-					table_name = StringName(directive_arg)
+				if arg: # otherwise, we'll get table name from file name
+					table_name = StringName(arg)
 			else:
-				assert(directive > TableDirectives.N_TABLE_FORMATS,
-						"Don't use @N_TABLE_FORMATS in " + path)
+				assert(directive > TableDirectives.N_FORMATS,
+						"Don't use @N_FORMATS in %s, %s" % [path, debug_row])
 				specific_directives.append(directive)
-				specific_directive_args.append(directive_arg)
+				specific_directive_args.append(arg)
 			continue
 		
 		# identify comment columns in 1st non-comment, non-directive row (fields, if we have them)
@@ -158,7 +169,7 @@ func import_file(file: FileAccess, source_path: String) -> void:
 		for comment_column in comment_columns: # back to front
 			line_array.remove_at(comment_column)
 		assert(line_array.size() == n_data_columns,
-			"Inconsistent row column number after tab delimination in " + path)
+			"Inconsistent row cell number after delimination in %s, %s" % [path, debug_row])
 		cells.append(line_array)
 	
 	# set format and/or name if not specified in directive
@@ -177,21 +188,31 @@ func import_file(file: FileAccess, source_path: String) -> void:
 	for i in specific_directives.size():
 		var directive := specific_directives[i]
 		assert(allowed_directives.has(directive),
-				"Unallowed directive %s in format %s in %s" % [directive, table_format, path])
+				"Unallowed directive '%s' in format %s in %s" % [directive, table_format, path])
 		assert(!REQUIRES_ARGUMENT[directive] or specific_directive_args[i],
-				"Directive %s requires an argument in %s" % [directive, path])
+				"Directive '%s' requires an argument in %s" % [directive, path])
 	
 	# send cells for preprocessing
 	match table_format:
 		TableDirectives.DB_ENTITIES:
+			if VERBOSE:
+				print("Importing DB_ENTITIES " + path)
 			_preprocess_db_style(cells, false, false, false)
 		TableDirectives.DB_ENTITIES_MOD:
+			if VERBOSE:
+				print("Importing DB_ENTITIES_MOD " + path)
 			_preprocess_db_style(cells, true, false, false)
 		TableDirectives.ENUMERATION:
+			if VERBOSE:
+				print("Importing ENUMERATION " + path)
 			_preprocess_db_style(cells, false, true, false)
 		TableDirectives.WIKI_LOOKUP:
+			if VERBOSE:
+				print("Importing WIKI_LOOKUP " + path)
 			_preprocess_db_style(cells, false, false, true)
 		TableDirectives.ENUM_X_ENUM:
+			if VERBOSE:
+				print("Importing ENUM_X_ENUM " + path)
 			_preprocess_enum_x_enum(cells)
 
 
@@ -228,15 +249,17 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 	# handle field names
 	if !is_enumeration:
 		var line_array: Array[String] = cells[0]
-		assert(!line_array[0], "Left-most cell of field name header must be empty in " + path)
+		assert(!line_array[0], "Left-most cell of field name header must be empty in %s, 0" % path)
 		column_names = []
 		for column in skip_column_0_iterator:
 			var field := StringName(line_array[column])
-			assert(field != &"name", "Use of 'name' as field is not allowed in " + path)
-			assert(!column_names.has(field), "Duplicate field name " + field)
+			assert(field != &"name", "Use of 'name' as field is not allowed in %s, 0, %s" % [path,
+					column])
+			assert(!column_names.has(field), "Duplicate field name '%s' in %s, 0, %s" % [field,
+					path, column])
 			if is_wiki_lookup:
 				assert(field.ends_with(".wiki"),
-						"WIKI_LOOKUP fields must be 'en.wiki', etc. in " + path)
+						"WIKI_LOOKUP fields must have '.wiki' suffix in %s, 0, %s" % [path, column])
 			column_names.append(field)
 		row += 1
 	
@@ -250,12 +273,13 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			# process header rows until we don't recognize line_array[0] as header item
 			if line_array[0] == "Type":
 				assert(!is_enumeration,
-						"'Type' doesn't belong in ENUMERATION table format in " + path)
+						"Don't use Type in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
-						"'Type' doesn't belong in WIKI_LOOKUP table format in " + path)
+						"Don't use Type in WIKI_LOOKUP table %s, %s" % [path, row])
 				for column in skip_column_0_iterator:
-					assert(line_array[column], "All fields must have 'Type' in " + path)
+					assert(line_array[column], "Missing Type in %s, %s, %s" % [path, row, column])
 					var field := column_names[column - 1]
+					debug_pos = "Type header, " + field
 					postprocess_types[field] = _get_postprocess_type(line_array[column])
 				has_types = true
 				row += 1
@@ -263,9 +287,9 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			
 			if line_array[0] == "Unit":
 				assert(!is_enumeration,
-						"'Unit' doesn't belong in ENUMERATION table format in " + path)
+						"Don't use Unit in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
-						"'Unit' doesn't belong in WIKI_LOOKUP table format in " + path)
+						"Don't use Unit in WIKI_LOOKUP table %s, %s" % [path, row])
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
@@ -275,9 +299,9 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			
 			if line_array[0] == "Default":
 				assert(!is_enumeration,
-						"'Default' doesn't belong in ENUMERATION table format in " + path)
+						"Don't use Default in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
-						"'Default' doesn't belong in WIKI_LOOKUP table format in " + path)
+						"Don't use Default in WIKI_LOOKUP table %s, %s" % [path, row])
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
@@ -288,7 +312,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			if line_array[0].begins_with("Prefix"):
 				if line_array[0].length() > 6:
 					assert(line_array[0][6] == "/",
-							"Bad Prefix construction %s in %s" % [line_array[0], path])
+							"Bad Prefix construction %s in %s, %s" % [line_array[0], path, row])
 					entity_prefix = line_array[0].trim_prefix("Prefix/")
 				for column in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
@@ -303,13 +327,14 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 					"Table format requires 'Type' in " + path)
 			for field in unit_names:
 				assert(postprocess_types[field] == TYPE_FLOAT,
-						"Only FLOAT can have Unit in " + path)
+						"Non-FLOAT field '%s' has Unit in %s" % [field, path])
 			
 			# preprocess defaults
 			for field in raw_defaults:
 				var raw_default: String = raw_defaults[field]
 				var prefix: String = prefixes.get(field, "")
 				var postprocess_type: int = postprocess_types[field]
+				debug_pos = "Default header, " + field
 				default_values[field] = _get_preprocess_value(raw_default, postprocess_type, prefix)
 			
 			# init arrays in dictionaries
@@ -333,17 +358,18 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 				row_names = []
 			else:
 				assert(!is_mod and !is_enumeration and !is_wiki_lookup,
-						"Missing required row name in " + path)
+						"Missing required row name in %s, %s" % [path, row])
 		elif has_row_names:
-			assert(line_array[0], "Missing expected row name in " + path)
+			assert(line_array[0], "Missing expected row name in %s, %s" % [path, row])
 		else:
 			assert(!line_array[0],
-					"Inconsistent use of row name; must be all or none in " + path)
+					"Inconsistent use of row name; must be all or none in %s, %s" % [path, row])
 		
 		if has_row_names:
 #			var prefix: String = prefixes.get(&"name", "")
 			var row_name := StringName(entity_prefix + line_array[0])
-			assert(!row_names.has(row_name))
+			assert(!row_names.has(row_name),
+					"Duplicate row_name '%s' in %s, %s" % [row_name, path, row])
 			row_names.append(row_name)
 			if is_enumeration: # we only needed row name
 				content_row += 1
@@ -362,6 +388,7 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 				var prefix: String = prefixes.get(field, "")
 				var postprocess_type: int = (TYPE_STRING_NAME if is_wiki_lookup
 						else postprocess_types[field])
+				debug_pos = str(row) + ", " + field
 				preprocess_value = _get_preprocess_value(raw_value, postprocess_type, prefix)
 			dict_of_field_arrays[field][content_row] = preprocess_value
 		content_row += 1
@@ -384,24 +411,26 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 		var prefixes: String = cells[0][0]
 		var prefixes_split := prefixes.split("\\")
 		assert(prefixes_split.size() == 2,
-				"To prefix, use <row prefix>\\<column prefix> in " + path)
+				"To prefix, use <row prefix>\\<column prefix> in %s, 0, 0" % path)
 		row_prefix = prefixes_split[0]
 		column_prefix = prefixes_split[1]
 	
 	# apply directives
-	var type_pos := specific_directives.find(TableDirectives.TABLE_TYPE)
-	assert(type_pos >= 0, "Table format requires @TABLE_TYPE in " + path)
+	var type_pos := specific_directives.find(TableDirectives.DATA_TYPE)
+	assert(type_pos >= 0, "Table format requires @DATA_TYPE in " + path)
 	var raw_type := specific_directive_args[type_pos]
+	debug_pos = "DATA_TYPE"
 	var postprocess_type := _get_postprocess_type(raw_type)
 	var raw_default := ""
-	var default_pos := specific_directives.find(TableDirectives.TABLE_DEFAULT)
+	var default_pos := specific_directives.find(TableDirectives.DATA_DEFAULT)
 	if default_pos >= 0:
 		raw_default = specific_directive_args[default_pos]
+	debug_pos = "DATA_DEFAULT"
 	var import_default: Variant = _get_preprocess_value(raw_default, postprocess_type, "")
-	var unit_pos := specific_directives.find(TableDirectives.TABLE_UNIT)
+	var unit_pos := specific_directives.find(TableDirectives.DATA_UNIT)
 	var unit_name := &""
 	if unit_pos >= 0:
-		assert(postprocess_type == TYPE_FLOAT, "Can't use @TABLE_UNIT for non-FLOAT in " + path)
+		assert(postprocess_type == TYPE_FLOAT, "Can't use '@DATA_UNIT' for non-FLOAT in " + path)
 		unit_name = StringName(specific_directive_args[unit_pos])
 	if specific_directives.has(TableDirectives.TRANSPOSE):
 		var swap_prefix := row_prefix
@@ -448,6 +477,7 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 			var raw_value := line_array[column]
 			var preprocess_value: Variant
 			if raw_value:
+				debug_pos = str(row) + ", " + str(column)
 				preprocess_value = _get_preprocess_value(raw_value, postprocess_type, "")
 			else:
 				preprocess_value = import_default
@@ -473,7 +503,7 @@ func _get_postprocess_type(type_str: StringName) -> int:
 	if type_str.begins_with("ARRAY[") and type_str.ends_with("]"):
 		var array_type := _get_postprocess_type(type_str.trim_prefix("ARRAY[").trim_suffix("]"))
 		return TYPE_MAX + array_type
-	assert(false, "Missing or unknown table Type '%s' in %s" % [type_str, path])
+	assert(false, "Missing or unknown table Type '%s' in %s, %s" % [type_str, path, debug_pos])
 	return -1
 
 
@@ -493,7 +523,7 @@ func _get_preprocess_value(value: String, postprocess_type: int, prefix: String)
 			if value == "x" or value.matchn("true"):
 				return 1
 			assert(value == "" or value.matchn("false"),
-					"Unknown BOOL content '%s' in %s" % [value, path])
+					"Unknown BOOL content '%s' in %s, %s" % [value, path, debug_pos])
 			return 0
 		
 		TYPE_FLOAT:
@@ -505,7 +535,8 @@ func _get_preprocess_value(value: String, postprocess_type: int, prefix: String)
 			if value == "-?" or value.matchn("-inf"):
 				return "-?"
 			value = value.replace("E", "e").replace("_", "")
-			assert(value.lstrip("~").is_valid_float(), "Invalid float '%s' in %s" % [value, path])
+			assert(value.lstrip("~").is_valid_float(), "Invalid float '%s' in %s, %s" % [value,
+					path, debug_pos])
 			return value
 		
 		TYPE_STRING, TYPE_STRING_NAME, TYPE_INT:
@@ -529,7 +560,7 @@ func _get_preprocess_value(value: String, postprocess_type: int, prefix: String)
 			result_array.append(_get_preprocess_value(raw_element, content_type, prefix))
 		return result_array
 	
-	assert(false, "Missing or unknown type '%s' in %s" % [postprocess_type, path])
+	assert(false, "Missing or unknown type '%s' in %s, %s" % [postprocess_type, path, debug_pos])
 	return null
 
 
