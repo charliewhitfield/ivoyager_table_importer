@@ -34,9 +34,9 @@ File and table formats are described below.
 
 ## Usage
 
-The plugin imports .tsv tables as a custom resource class. However, this class contains preprocessed data that isn't very useful except possibly for table debugging purposes.
+The plugin imports .tsv tables as a custom resource class that contains low-level, preprocessed data that isn't very useful except for table debugging.
 
-Your only interface with the plugin should be with the autoload singleton **IVTableData**. From here you will give postprocessing instructions via function:
+You interface with all table data via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing instructions via function:
 
 `postprocess_tables(table_names: Array, project_enums := [], unit_multipliers := {}, unit_lambdas := {}, enable_wiki := false, enable_precisions := false)`
 
@@ -112,7 +112,7 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original file precision in significant digits, specify `enable_precisions = true` in the `postprocess_tables()` call. You can then access float precisions via the 'precisions' dictionary or 'get_precision' methods in IVTableData. (It's up to you to use precision in your GUI display. Keep in mind that unit-conversion will cause values like '1.0000001' if you don't do any string formatting.)
 
-Example precision from table cell text:
+Significant digits are counted from the left-most non-0 digit to the right-most digit (if decimal is present) or to the right-most non-0 digit (if decimal is not present), ignoring the exponential. Examples:
 
 * '1e3' (1 significant digit)
 * '1.000e3' (4 significant digits)
@@ -122,7 +122,8 @@ Example precision from table cell text:
 * '1000.0' (5 significant digits)
 * '1.0010' (5 significant digits)
 * '0.0010' (2 significant digits)
-* **Any** number prefixed with '~' (0 significant digits). We use this in our Planetarium to display values such as '~1 km'.
+
+Additionally, **any** number that prefixed with '~' is considered a zero-precision value (0 significant digits). We use this in our Planetarium to display values such as '~1 km'.
 
 ## DB_ENTITIES_MOD Format
 
@@ -175,5 +176,5 @@ This format creates an array-of-arrays data structure where data is indexed [row
 
 Enumerations must be 'known' by the plugin, which means that they were added as row entity names by a DB_ENTITIES, DB_ENTITIES_MOD or ENUMERATION format table, or were added as a 'project_enum' dictionary in the `postprocess_tables()` call.
 
-Entity names from the enumerations can be missing or out of order in the table. The resulting array-of-arrays structure will always have rows and columns sized and ordered according to the enumeration, not the table. Data not specified in the table file (omited row or column entities) will be imputed with default value.
+The resulting array-of-arrays structure will always have rows and columns that are sized and ordered according to the enumeration, not the table, if entities are missing or out of order in the table. Data not specified in the table file (omited row or column entities) will be imputed with default value.
 
