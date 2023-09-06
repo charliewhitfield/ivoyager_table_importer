@@ -1,6 +1,6 @@
 # I, Voyager - Table Importer
 
-TL;DR: This editor plugin imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. It imputes defaults, prefixes strings, converts floats by specified units, and converts text enumerations to integers (enumerations can be project or table-defined), ... amongst other things. 
+TL;DR: This Godot Editor plugin imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. It imputes defaults, prefixes strings, converts floats by specified units, and converts text enumerations to integers (enumerations can be project or table-defined), ... amongst other things. 
 
 ## Installation
 
@@ -27,7 +27,7 @@ It provides several specific table file formats that allow:
 * Table **enumerations** that may reference project enums _**or**_ table-defined entity names. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _in any table_ because 'PLANET_EARTH' is row 3 in planets.tsv.
 * 'Mod' tables that modify existing tables.
 * [Optionally] Construction of a wiki lookup dictionary to use for an internal or external wiki.
-* [For scientific apps, mostly] Determination of float significant digits from file text, so precision can be correctly displayed even after unit conversion.
+* [For scientific apps, mostly] Determination of float significant digits from file number text, so precision can be correctly displayed even after unit conversion.
 * Easy or optimized access to _all_ processed and statically typed data via the IVTableData singleton.
 
 File and table formats are described below.

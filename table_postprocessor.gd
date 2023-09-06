@@ -17,7 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-@tool
 extends RefCounted
 
 
@@ -316,6 +315,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 
 
 func _postprocess_wiki_lookup(table_res: TableResource) -> void:
+	# These are NOT added to the 'tables' dictionary!
 	if !_enable_wiki:
 		return
 	var row_names := table_res.row_names

@@ -17,7 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-@tool
+@static_unload
 extends Object
 
 # This static class defines default units and dictionaries for converting table
@@ -29,7 +29,7 @@ extends Object
 # constants (e.g., 'const SOME_TIME_CONSTANT = 4.0 * Units.DAY'). If you do,
 # be sure to provide your conversion dictionaries when calling
 # TableData.postprocess_tables(), or set conversion dictionaries directly in
-# TableUtils.
+# table_utils.gd.
 #
 # For GUI unit display, feel free to use our open-source IVQuantityFormatter:
 # https://github.com/ivoyager/ivoyager/blob/master/program/quantity_formatter.gd

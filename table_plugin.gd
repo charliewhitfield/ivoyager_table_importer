@@ -23,6 +23,9 @@ extends EditorPlugin
 # Adds a custom resource, an EditorImportPlugin, and an autoload singleton.
 # All user interface is through singleton 'IVTableData' (table_data.gd).
 
+const VERSION := "0.0.3"
+const VERSION_YMD := 20230906
+
 const TableResource := preload("table_resource.gd")
 const TableImporter := preload("table_importer.gd")
 
@@ -30,6 +33,10 @@ var table_importer: EditorImportPlugin
 
 
 func _enter_tree():
+	var version_str := VERSION
+	if version_str.ends_with("-dev"):
+		version_str += " " + str(VERSION_YMD)
+	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version_str)
 	var editor_gui := get_editor_interface().get_base_control()
 	var table_res_icon := editor_gui.get_theme_icon("Grid", "EditorIcons")
 	add_custom_type("IVTableResource", "Resource", TableResource, table_res_icon)
