@@ -34,15 +34,13 @@ File and table formats are described below.
 
 ## Usage
 
-The plugin imports .tsv tables as a custom resource class that contains low-level, preprocessed data that isn't very useful except for table debugging.
+All user interface is via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing intructions and access all postprocessed table data. IVTableData also provides functions to build objects, dictionaries, or flag fields directly from table data. See API in [table_data.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/table_data.gd).
 
-You interface with all table data via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing instructions via function:
+Postprocessing is controled by function:
 
 `postprocess_tables(table_names: Array, project_enums := [], unit_multipliers := {}, unit_lambdas := {}, enable_wiki := false, enable_precisions := false)`
 
-Processed, statically typed data can then be accessed directly in IVTableData's dictionaries or via its many 'get' functions. IVTableData also provides functions to init dictionaries or objects directly from table data.
-
-See IVTableData API in [table_data.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/table_data.gd).
+The plugin imports .tsv tables as a custom resource class that contains low-level, preprocessed data that isn't very useful except for table debugging.
 
 ## General File Format and Table Editing
 
@@ -88,7 +86,7 @@ After field names and before data, tables can have the following header rows in 
    * `STRING_NAME` - No escaping. Empty cells will be imputed with `Default` or &"".
    * `BOOL` - Case-insensitive 'True' or 'False'. 'x' (lower case) is interpreted as True. Empty cells will be imputed with `Default` or False. Any other cell values will cause an error.
    * `INT` - A valid integer or text 'enumeration'. Enumerations may include any table entity name (from _any_ table) or hard-coded project enums specified in the `postprocess_tables()` call (enumerations that can't be found will cause an error at this function call). Empty cells will be imputed with `Default` or -1.
-   * `FLOAT` - 'INF', '-INF' and 'NAN' (case-insensitive) are correctly interpreted. 'E' or 'e' are ok. Underscores '_' are allowed and removed before float conversion. '?' and '-?' are interpreted as INF and -INF, respectively. A '~' prefix is allowed and affects precision (see below) but not float value. Empty cells will be imputed with `Default` or NAN. (See warning about .csv/.tsv editors above. If you must use Excel or another 'smart' editor, then prefix all numbers with ' or _ to prevent modification!)
+   * `FLOAT` - 'INF', '-INF' and 'NAN' (case-insensitive) are correctly interpreted. 'E' or 'e' are ok. Underscores '_' are allowed and removed before float conversion. '?' and '-?' are interpreted as INF and -INF, respectively. A '~' prefix is allowed and affects precision (see below) but not float value. Empty cells will be imputed with `Default` or NAN.
    * `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ',' (no space) and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Empty cells will be imputed with `Default` or an empty, typed array.
 * `Default` (optional): Default values must be empty or follow Type rules above. If non-empty, this value is imputed for any empty cells in the column.
 * `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts table floats to SI base units in the postprocessed 'internal' data. Default unit conversions are defined by 'unit_multipliers' and 'unit_lambdas' dictionaries [here](https://github.com/charliewhitfield/ivoyager_table_importer/blob/develop/table_unit_defaults.gd). Unit symbols and/or internal representation can be changed by specifying replacement conversion dictionaries in the `postprocess_tables()` call.
@@ -112,7 +110,9 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original file precision in significant digits, specify `enable_precisions = true` in the `postprocess_tables()` call. You can then access float precisions via the 'precisions' dictionary or 'get_precision' methods in IVTableData. (It's up to you to use precision in your GUI display. Keep in mind that unit-conversion will cause values like '1.0000001' if you don't do any string formatting.)
 
-Significant digits are counted from the left-most non-0 digit to the right-most digit (if decimal is present) or to the right-most non-0 digit (if decimal is not present), ignoring the exponential. Examples:
+See warning above about .csv/.tsv editors. If you must use Excel or another 'smart' editor, then prefix all numbers with ' or _ to prevent modification!
+
+Significant digits are counted from the left-most non-0 digit to the right-most digit if decimal is present, or to the right-most non-0 digit if decimal is not present, ignoring the exponential. Examples:
 
 * '1e3' (1 significant digit)
 * '1.000e3' (4 significant digits)
@@ -175,6 +175,8 @@ Optional directives: `@DATA_DEFAULT=<Default>`, `@DATA_UNIT=<Unit>`, `@TRANSPOSE
 This format creates an array-of-arrays data structure where data is indexed [row_enumeration][column_enumeration] or the transpose if `@TRANSPOSE` is specified. All cells in the table have the same Type, Default and Unit (if applicable) specified by data directives above. If not specified, default 'nulls' for the six allowed Types are "", &"", false, NAN, -1 and [].
 
 Enumerations must be 'known' by the plugin, which means that they were added as row entity names by a DB_ENTITIES, DB_ENTITIES_MOD or ENUMERATION format table, or were added as a 'project_enum' dictionary in the `postprocess_tables()` call.
+
+The upper-left table cell can either be empty or specify row and column entity prefixes delimited by a backslash. E.g., 'RESOURCE_\FACILITY_' prefixes all row names with 'RESOURCE_' and all column names with 'FACILITY_'.
 
 The resulting array-of-arrays structure will always have rows and columns that are sized and ordered according to the enumeration, not the table, if entities are missing or out of order in the table. Data not specified in the table file (omited row or column entities) will be imputed with default value.
 
