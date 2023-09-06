@@ -17,13 +17,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-@tool
 extends Object
 
 # User can supply 'unit_multipliers' and 'unit_lambdas' when calling
 # TableData.postprocess_tables(), or set directly here before that.
-# If not set at or before postprocess_tables(), they will be set to the default
-# conversion dictionaries defined in table_unit_defaults.gd.
+# If not set at or before postprocess_tables(), they will be set to the
+# default conversion dictionaries defined in table_unit_defaults.gd.
 
 
 static var unit_multipliers: Dictionary
