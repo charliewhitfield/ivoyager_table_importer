@@ -7,8 +7,7 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Under development using Godot 4.1.1.
 
 ### Changed
-
-
+* Added more API asserts.
 
 ## [v0.0.3] - 2023-09-06
 
