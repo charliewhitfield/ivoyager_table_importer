@@ -23,8 +23,8 @@ extends EditorPlugin
 # Adds a custom resource, an EditorImportPlugin, and an autoload singleton.
 # All user interface is through singleton 'IVTableData' (table_data.gd).
 
-const VERSION := "0.0.3"
-const VERSION_YMD := 20230906
+const VERSION := "0.0.4-dev"
+const VERSION_YMD := 20230907
 
 const TableResource := preload("table_resource.gd")
 const TableImporter := preload("table_importer.gd")
