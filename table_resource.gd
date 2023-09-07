@@ -59,8 +59,6 @@ const ALLOWED_SPECIFIC_DIRECTIVES := [
 const REQUIRES_ARGUMENT := [false, false, false, false, false, false,
 		true, true, true, true, false, false]
 
-const TableUtils := preload("res://addons/ivoyager_table_importer/table_utils.gd")
-
 const VERBOSE := true # prints a single line on import
 
 @export var table_format := -1
@@ -231,7 +229,6 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			postprocess_types = {} # indexed by fields
 			default_values = {} # indexed by fields
 			unit_names = {} # indexed by FLOAT fields
-#			precisions  = {} # structured as dict_of_field_arrays but only FLOAT fields
 	
 	# temp working dicts
 	var prefixes := {}

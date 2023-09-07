@@ -45,7 +45,7 @@ var precisions := {} # populated if enable_precisions (indexed as tables for FLO
 
 func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multipliers := {},
 		unit_lambdas := {}, enable_wiki := false, enable_precisions := false) -> void:
-	# Call this function to populate dictionaries with postprocessed data.
+	# Call this function to populate dictionaries with postprocessed table data.
 	# See table_unit_defaults.gd for default unit conversion to SI base units.
 	
 	# Cast arrays here so user isn't forced to input typed arrays.
@@ -114,18 +114,24 @@ func has_entity_name(table: StringName, entity: StringName) -> bool:
 
 func get_db_n_rows(table: StringName) -> int:
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	return tables["n_" + table]
+	var key := StringName("n_" + table)
+	assert(tables.has(key), "Specified table must be 'DB' format")
+	return tables[key]
 
 
 func get_db_entity_prefix(table: StringName) -> String:
 	# E.g., 'PLANET_' in planets.tsv.
 	# Prefix must be specified for the table's 'name' column.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	return tables["prefix_" + table]
+	var key := StringName("prefix_" + table)
+	assert(tables.has(key),
+			"Specified table must be 'DB' format with 'Prefix/<entity_prefix' header")
+	return tables[key]
 
 
 func get_db_entity_name(table: StringName, row: int) -> StringName:
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(&"name"):
 		return &""
@@ -138,6 +144,7 @@ func get_db_entity_name(table: StringName, row: int) -> StringName:
 func get_db_field_array(table: StringName, field: StringName) -> Array:
 	# Duplicated for safety. User can get internal array from dictionary.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return []
@@ -147,6 +154,7 @@ func get_db_field_array(table: StringName, field: StringName) -> Array:
 func count_db_matching(table: StringName, field: StringName, match_value: Variant) -> int:
 	# Returns -1 if field not found.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return -1
@@ -157,6 +165,7 @@ func count_db_matching(table: StringName, field: StringName, match_value: Varian
 func get_db_matching_rows(table: StringName, field: StringName, match_value: Variant) -> Array[int]:
 	# May cause error if match_value type differs from field column.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return [] as Array[int]
@@ -174,6 +183,7 @@ func get_db_matching_rows(table: StringName, field: StringName, match_value: Var
 func get_db_true_rows(table: StringName, field: StringName) -> Array[int]:
 	# Any value that evaluates true in an 'if' statement. Type is not enforced.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return [] as Array[int]
@@ -193,6 +203,7 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 	# 'null' value: "", &"", NAN, -1 or [].
 	# Always true for Type BOOL.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -217,6 +228,7 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 func db_has_float_value(table: StringName, field: StringName, row := -1, entity := &"") -> bool:
 	# Returns true if table has field and float value is not NAN.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -229,6 +241,7 @@ func db_has_float_value(table: StringName, field: StringName, row := -1, entity 
 func get_db_string(table: StringName, field: StringName, row := -1, entity := &"") -> String:
 	# Use for field Type = STRING; returns "" if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -242,6 +255,7 @@ func get_db_string_name(table: StringName, field: StringName, row := -1, entity 
 		) -> StringName:
 	# Use for field Type = STRING_NAME; returns &"" if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -254,6 +268,7 @@ func get_db_string_name(table: StringName, field: StringName, row := -1, entity 
 func get_db_bool(table: StringName, field: StringName, row := -1, entity := &"") -> bool:
 	# Use for field Type = BOOL; returns false if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -266,6 +281,7 @@ func get_db_bool(table: StringName, field: StringName, row := -1, entity := &"")
 func get_db_int(table: StringName, field: StringName, row := -1, entity := &"") -> int:
 	# Use for field Type = INT; returns -1 if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -278,6 +294,7 @@ func get_db_int(table: StringName, field: StringName, row := -1, entity := &"") 
 func get_db_float(table: StringName, field: StringName, row := -1, entity := &"") -> float:
 	# Use for field Type = FLOAT; returns NAN if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -290,6 +307,7 @@ func get_db_float(table: StringName, field: StringName, row := -1, entity := &""
 func get_db_array(table: StringName, field: StringName, row := -1, entity := &"") -> Array:
 	# Use for field Type = ARRAY[xxxx]; returns [] if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
@@ -349,6 +367,7 @@ func get_db_float_precisions(fields: Array[StringName], table: StringName, row: 
 func get_db_row_data_array(fields: Array[StringName], table: StringName, row: int) -> Array:
 	# Returns an array with value for each field; all fields must exist.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	var n_fields := fields.size()
 	var data := []
@@ -366,6 +385,7 @@ func db_build_dictionary(dict: Dictionary, fields: Array[StringName], table: Str
 	# Sets dict value for each field that exactly matches a field in table.
 	# Missing value in table without default will not be set.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	var n_fields := fields.size()
 	var i := 0
@@ -380,6 +400,7 @@ func db_build_dictionary_from_keys(dict: Dictionary, table: StringName, row: int
 	# Sets dict value for each existing dict key that exactly matches a column
 	# field in table. Missing value in table without default will not be set.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	for field in dict:
 		if db_has_value(table, field, row):
@@ -390,6 +411,7 @@ func db_build_object(object: Object, fields: Array[StringName], table: StringNam
 	# Sets object property for each field that exactly matches a field in table.
 	# Missing value in table without default will not be set.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	var n_fields := fields.size()
 	var i := 0
@@ -404,6 +426,7 @@ func db_build_object_all_fields(object: Object, table: StringName, row: int) -> 
 	# Sets object property for each field that exactly matches a field in table.
 	# Missing value in table without default will not be set.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	for field in tables[table]:
 		if db_has_value(table, field, row):
@@ -414,6 +437,7 @@ func db_get_flags(flag_fields: Dictionary, table: StringName, row: int, flags :=
 	# Sets flag if table value exists and would evaluate true in get_db_bool(),
 	# i.e., is true or x. Does not unset.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	for flag in flag_fields:
 		var field: StringName = flag_fields[flag]
 		if get_db_bool(table, field, row):

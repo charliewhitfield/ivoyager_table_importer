@@ -20,20 +20,19 @@
 @static_unload
 extends Object
 
-# This static class defines default units and dictionaries for converting table
-# float values to internal base SI units.
+# This static class defines units and unit name dictionaries for converting
+# table float values to SI base units internally. This is used if the project
+# doesn't supply its own conversion dictionaries.
 #
 # It may be convenient to create a 'class_name Units' object in your project
 # with your own unit constants and 'unit_multipliers' and 'unit_lambdas'
 # dictionaries. This way you can code unit quantities in your files as
 # constants (e.g., 'const SOME_TIME_CONSTANT = 4.0 * Units.DAY'). If you do,
-# be sure to provide your conversion dictionaries when calling
-# TableData.postprocess_tables(), or set conversion dictionaries directly in
-# table_utils.gd.
+# be sure to provide your conversion dictionaries in the postprocess_tables()
+# call, or set conversion dictionaries directly in table_utils.gd.
 #
 # For GUI unit display, feel free to use our open-source IVQuantityFormatter:
 # https://github.com/ivoyager/ivoyager/blob/master/program/quantity_formatter.gd
-
 
 # SI base units
 const SECOND := 1.0
@@ -78,9 +77,12 @@ const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER * METER * METER / (KG * SECO
 
 # Unit symbols below mostly follow:
 # https://en.wikipedia.org/wiki/International_System_of_Units
-# (Some odd choices may be blamed on our use in a solar system simulator.) 
 #
-# We look for unit symbol first in mulitipliers and then in lambdas.
+# There are some odd choices here because this was developed for our solar
+# system simulator. You can make your own conversion dicts!
+#
+# See 'convert_quantity()' in table_utils.gd. It will first look for a unit
+# symbol in 'unit_multipliers' and then in 'unit_lambdas'.
 
 static var unit_multipliers := {
 	# Duplicated symbols have leading underscore(s).
