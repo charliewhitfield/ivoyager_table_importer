@@ -31,8 +31,8 @@ extends Object
 # be sure to provide your conversion dictionaries in the postprocess_tables()
 # call, or set conversion dictionaries directly in table_utils.gd.
 #
-# For GUI unit display, feel free to use our open-source IVQuantityFormatter:
-# https://github.com/ivoyager/ivoyager/blob/master/program/quantity_formatter.gd
+# For GUI unit display, feel free to use our open-source IVQFormat:
+# https://github.com/ivoyager/ivoyager/blob/master/static/qformat.gd
 
 # SI base units
 const SECOND := 1.0
