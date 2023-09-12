@@ -22,9 +22,11 @@ extends EditorPlugin
 
 # Adds a custom resource, an EditorImportPlugin, and an autoload singleton.
 # All user interface is through singleton 'IVTableData' (table_data.gd).
-
-const VERSION := "0.0.4-dev"
-const VERSION_YMD := 20230907
+#
+# Note: There is talk in Godot issues of depreciating 'add_custom_type()'.
+# We prefer this method over file 'class_name' because it does not involve
+# .godot/global_script_class_cache.cfg, which is buggy as of Godot 4.1.1 (fails
+# to update changes outside of editor; we'll open an issue soon!).
 
 const TableResource := preload("table_resource.gd")
 const TableImporter := preload("table_importer.gd")
@@ -33,10 +35,10 @@ var table_importer: EditorImportPlugin
 
 
 func _enter_tree():
-	var version_str := VERSION
-	if version_str.ends_with("-dev"):
-		version_str += " " + str(VERSION_YMD)
-	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version_str)
+	var config := ConfigFile.new()
+	config.load("res://addons/ivoyager_table_importer/plugin.cfg")
+	var version: String = config.get_value("plugin", "version")
+	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version)
 	var editor_gui := get_editor_interface().get_base_control()
 	var table_res_icon := editor_gui.get_theme_icon("Grid", "EditorIcons")
 	add_custom_type("IVTableResource", "Resource", TableResource, table_res_icon)
@@ -46,7 +48,7 @@ func _enter_tree():
 
 
 func _exit_tree():
-	print("Removing IVoyager Table Importer...")
+	print("Removing I, Voyager - Table Importer")
 	remove_custom_type("IVTableResource")
 	remove_import_plugin(table_importer)
 	table_importer = null
