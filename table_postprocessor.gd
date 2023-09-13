@@ -24,6 +24,7 @@ enum TableDirectives { # copy from table_resource.gd
 	# table formats
 	DB_ENTITIES,
 	DB_ENTITIES_MOD,
+	DB_ANONYMOUS_ROWS,
 	ENUMERATION,
 	WIKI_LOOKUP,
 	ENUM_X_ENUM,
@@ -125,12 +126,14 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 			TableDirectives.DB_ENTITIES_MOD:
 				_modify_table_enumeration(table_res)
 	
-	# postprocess by format
+	# postprocess data by format
 	for table_res in table_resources:
 		
 		match table_res.table_format:
 			TableDirectives.DB_ENTITIES:
-				_postprocess_db_entities(table_res)
+				_postprocess_db_table(table_res, true)
+			TableDirectives.DB_ANONYMOUS_ROWS:
+				_postprocess_db_table(table_res, false)
 			TableDirectives.DB_ENTITIES_MOD:
 				_postprocess_db_entities_mod(table_res)
 			TableDirectives.WIKI_LOOKUP:
@@ -178,7 +181,7 @@ func _modify_table_enumeration(table_res: TableResource) -> void:
 		_enumeration_arrays[entity_name] = enumeration_array
 
 
-func _postprocess_db_entities(table_res: TableResource) -> void:
+func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> void:
 	var table_dict := {}
 	var table_name := table_res.table_name
 	var column_names := table_res.column_names
@@ -192,7 +195,6 @@ func _postprocess_db_entities(table_res: TableResource) -> void:
 	
 	var defaults := {} # need for table mods
 	
-	var has_entity_names := !row_names.is_empty()
 	if has_entity_names:
 		table_dict[&"name"] = _enumeration_arrays[table_name]
 	if _enable_precisions:
@@ -209,7 +211,7 @@ func _postprocess_db_entities(table_res: TableResource) -> void:
 		for row in n_rows:
 			new_field[row] = _get_postprocess_value(import_field[row], type, unit, str_array)
 		table_dict[field] = new_field
-		# keep table default (temporarily) in case this table is modified
+		# keep table default (temporarly) in case this table is modified
 		if has_entity_names:
 			var import_default: Variant = import_defaults.get(field) # null ok
 			var default: Variant = _get_postprocess_value(import_default, type, unit, str_array)
