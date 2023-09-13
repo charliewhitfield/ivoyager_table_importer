@@ -48,7 +48,10 @@ var localized_wiki := &"en.wiki"
 
 var _tables: Dictionary # postprocessed data indexed [table_name][field_name][row_int]
 var _enumerations: Dictionary # indexed by ALL entity names (which are globally unique)
-var _enumeration_dicts: Dictionary # use table name or ANY entity name to get entity enumeration dict
+var _enumeration_dicts: Dictionary # indexed by table name & all entity names
+var _enumeration_arrays: Dictionary # indexed as above
+var _n_rows: Dictionary # indexed by table name
+var _entity_prefixes: Dictionary # indexed by table name
 var _wiki_lookup: Dictionary # populated if enable_wiki
 var _precisions: Dictionary # populated if enable_precisions (indexed as tables for FLOAT fields)
 var _enable_wiki: bool
@@ -59,12 +62,16 @@ var _table_defaults := {} # only tables that might be modified
 
 func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
+		enumeration_arrays: Dictionary, n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary,
 		enable_wiki: bool, enable_precisions: bool) -> void:
 	
 	_tables = tables
 	_enumerations = enumerations
 	_enumeration_dicts = enumeration_dicts
+	_enumeration_arrays = enumeration_arrays
+	_n_rows = n_rows
+	_entity_prefixes = entity_prefixes
 	_wiki_lookup = wiki_lookup
 	_precisions = precisions
 	_enable_wiki = enable_wiki
@@ -89,10 +96,25 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	
 	# add project enums
 	for project_enum in project_enums:
+		var is_simple_sequential := true # test this
+		i = 0
+		for entity_name in project_enum:
+			if project_enum[entity_name] != i:
+				is_simple_sequential = false
+				break
+			i += 1
+		var size := project_enum.size()
+		var enum_array: Array[StringName] = []
+		if is_simple_sequential:
+			enum_array.resize(size)
 		for entity_name in project_enum:
 			assert(!enumerations.has(entity_name), "Table enumerations must be globally unique!")
-			enumerations[entity_name] = project_enum[entity_name]
+			var enumeration: int = project_enum[entity_name]
+			enumerations[entity_name] = enumeration
 			enumeration_dicts[entity_name] = project_enum # needed for ENUM_X_ENUM
+			if is_simple_sequential:
+				enum_array[enumeration] = entity_name
+				enumeration_arrays[entity_name] = enum_array
 	
 	# add/modify table enumerations
 	for table_res in table_resources:
@@ -119,34 +141,41 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 
 func _add_table_enumeration(table_res: TableResource) -> void:
 	var table_name := table_res.table_name
-	var enumeration := {}
+	var enumeration_dict := {}
 	assert(!_enumeration_dicts.has(table_name), "Duplicate table name")
-	_enumeration_dicts[table_name] = enumeration
+	_enumeration_dicts[table_name] = enumeration_dict
 	var row_names := table_res.row_names
+	var enumeration_array: Array[StringName] = row_names.duplicate()
+	_enumeration_arrays[table_name] = enumeration_array
 	for row in row_names.size():
 		var entity_name := row_names[row]
-		enumeration[entity_name] = row
+		enumeration_dict[entity_name] = row
 		assert(!_enumerations.has(entity_name), "Table enumerations must be globally unique!")
 		_enumerations[entity_name] = row
 		assert(!_enumeration_dicts.has(entity_name), "??? entity_name == table_name ???")
-		_enumeration_dicts[entity_name] = enumeration
+		_enumeration_dicts[entity_name] = enumeration_dict
+		_enumeration_arrays[entity_name] = enumeration_array
 
 
 func _modify_table_enumeration(table_res: TableResource) -> void:
 	var modifies_name := table_res.modifies_table_name
 	assert(_enumeration_dicts.has(modifies_name), "No enumeration for " + modifies_name)
-	var enumeration: Dictionary = _enumeration_dicts[modifies_name]
+	var enumeration_dict: Dictionary = _enumeration_dicts[modifies_name]
+	var enumeration_array: Array[StringName] = _enumeration_arrays[modifies_name]
 	var row_names := table_res.row_names
 	for row in row_names.size():
 		var entity_name := row_names[row]
-		if enumeration.has(entity_name):
+		if enumeration_dict.has(entity_name):
 			continue
-		var modified_row := enumeration.size()
-		enumeration[entity_name] = modified_row
+		var new_row := enumeration_array.size()
+		enumeration_dict[entity_name] = new_row
+		enumeration_array.resize(new_row + 1)
+		enumeration_array[new_row] = entity_name
 		assert(!_enumerations.has(entity_name), "Mod entity exists in another table")
-		_enumerations[entity_name] = modified_row
+		_enumerations[entity_name] = new_row
 		assert(!_enumeration_dicts.has(entity_name), "??? entity_name == table_name ???")
-		_enumeration_dicts[entity_name] = enumeration
+		_enumeration_dicts[entity_name] = enumeration_dict
+		_enumeration_arrays[entity_name] = enumeration_array
 
 
 func _postprocess_db_entities(table_res: TableResource) -> void:
@@ -165,7 +194,7 @@ func _postprocess_db_entities(table_res: TableResource) -> void:
 	
 	var has_entity_names := !row_names.is_empty()
 	if has_entity_names:
-		table_dict[&"name"] = Array(row_names, TYPE_STRING_NAME, &"", null)
+		table_dict[&"name"] = _enumeration_arrays[table_name]
 	if _enable_precisions:
 		_precisions[table_name] = {}
 	
@@ -203,11 +232,11 @@ func _postprocess_db_entities(table_res: TableResource) -> void:
 			_precisions[table_name][field] = precisions_field
 	
 	_tables[table_name] = table_dict
-	_tables[StringName("n_" + table_name)] = n_rows
+	_n_rows[table_name] = n_rows
 	
 	if has_entity_names:
-		_tables[StringName("prefix_" + table_name)] = table_res.entity_prefix
-		_table_defaults[table_name] = defaults
+		_entity_prefixes[table_name] = table_res.entity_prefix
+		_table_defaults[table_name] = defaults # possibly needed for DB_ENTITIES_MOD
 
 
 func _postprocess_db_entities_mod(table_res: TableResource) -> void:
@@ -215,13 +244,12 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 	# TODO: Should work if >1 mod table for existing table, but need to test.
 	var modifies_table_name := table_res.modifies_table_name
 	assert(_tables.has(modifies_table_name), "Can't modify missing table " + modifies_table_name)
-	assert(_tables[StringName("prefix_" + modifies_table_name)] == table_res.entity_prefix,
+	assert(_entity_prefixes[modifies_table_name] == table_res.entity_prefix,
 			"Mod table Prefix/<entity_name> header must match modified table")
 	var table_dict: Dictionary = _tables[modifies_table_name]
 	assert(table_dict.has(&"name"), "Modified table must have 'name' field")
 	var defaults: Dictionary = _table_defaults[modifies_table_name]
-	var n_rows_key := StringName("n_" + modifies_table_name)
-	var n_rows: int = _tables[n_rows_key]
+	var n_rows: int = _n_rows[modifies_table_name]
 	var entity_enumeration: Dictionary = _enumeration_dicts[modifies_table_name] # already expanded
 	var n_rows_after_mods := entity_enumeration.size()
 	var mod_column_names := table_res.column_names
@@ -269,7 +297,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 			var default: Variant = defaults[field]
 			for row in new_rows:
 				field_array[row] = default
-		_tables[n_rows_key] = n_rows_after_mods
+		_n_rows[modifies_table_name] = n_rows_after_mods
 		# precisions
 		if _enable_precisions:
 			for field in precisions_dict:

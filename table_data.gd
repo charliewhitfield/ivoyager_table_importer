@@ -30,15 +30,16 @@ const TableUtils := preload("table_utils.gd")
 #
 # For DB format data, index as tables[table_name][field_name][row_int],
 # where row_int = enumerations[entity_name].
-# For these tables it's also possible to get the number of rows and the
-# table-specified row entity prefix (e.g., "PLANETS_") using
-# tables["n_" + table_name] and tables["prefix_" + table_name].
 # 
-# For enum x enum format, index as tables[table_name][row_enum][col_enum].
+# For enum x enum format, index as tables[table_name][row_enum][col_enum], or
+# swap row & column if table has @TRANSPOSE directive.
 
-var tables := {} # postprocessed data
+var tables := {} # all table data structures w/ postprocessed data, indexed by table_name
 var enumerations := {} # indexed by ALL entity names (which are globally unique)
-var enumeration_dicts := {} # use table name or ANY entity name to get entity enumeration dict
+var enumeration_dicts := {} # indexed by table name & all entity names
+var enumeration_arrays := {} # indexed as above
+var n_rows := {} # indexed by table name
+var entity_prefixes := {} # indexed by table name (must have header 'Prefix/<entity_name>')
 var wiki_lookup := {} # populated if enable_wiki
 var precisions := {} # populated if enable_precisions (indexed as tables for FLOAT fields)
 
@@ -79,8 +80,8 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multi
 	precisions.clear()
 	var table_postprocessor := TablePostprocessor.new()
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
-			enumerations, enumeration_dicts, wiki_lookup, precisions,
-			enable_wiki, enable_precisions)
+			enumerations, enumeration_dicts, enumeration_arrays, n_rows, entity_prefixes,
+			wiki_lookup, precisions, enable_wiki, enable_precisions)
 
 
 # For get functions, table is "planets", "moons", etc. Most get functions
@@ -96,37 +97,54 @@ func get_row(entity: StringName) -> int:
 	return enumerations.get(entity, -1)
 
 
-func get_entity_enumeration(table: StringName) -> Dictionary:
-	assert(enumeration_dicts.has(table), "Specified table '%s' does not exist" % table)
+func get_enumeration_dict(table_or_entity: StringName) -> Dictionary:
 	# Returns an enum-like dict of row numbers keyed by entity names.
-	# Works for DB_ENTITIES and ENUMERATION tables.
-	return enumeration_dicts[table]
+	# Works for DB_ENTITIES (w/ entity names) and ENUMERATION tables and 'project_enums'.
+	# Duplicated for safety. You can get internal dictionary directly if you want.
+	assert(enumeration_dicts.has(table_or_entity),
+			"Specified table or entity '%s' does not exist or table does not have entity names"
+			% table_or_entity)
+	var enumeration_dict: Dictionary = enumeration_dicts[table_or_entity]
+	return enumeration_dict.duplicate()
+
+
+func get_enumeration_array(table_or_entity: StringName) -> Array[StringName]:
+	# Returns an array of entity names.
+	# Works for DB_ENTITIES (w/ entity names) and ENUMERATION tables
+	# and 'project_enums' (ONLY if project_enum is simple sequential: 0, 1, 2,...).
+	# Duplicated for safety. You can get internal array directly if you want.
+	assert(enumeration_dicts.has(table_or_entity),
+			"Specified table or entity '%s' does not exist or table does not have entity names"
+			% table_or_entity)
+	var enumeration_array: Array[StringName] = enumeration_arrays[table_or_entity]
+	return enumeration_array.duplicate()
 
 
 func has_entity_name(table: StringName, entity: StringName) -> bool:
-	# Works for DB_ENTITIES and ENUMERATION tables.
-	assert(enumeration_dicts.has(table), "Specified table '%s' does not exist" % table)
-	var enumeration: Dictionary = enumeration_dicts[table]
-	return enumeration.has(entity)
+	# Works for DB_ENTITIES (w/ entity names) and ENUMERATION tables.
+	assert(enumeration_dicts.has(table),
+		"Specified table '%s' does not exist or does not have entity names" % table)
+	var enumeration_dict: Dictionary = enumeration_dicts[table]
+	return enumeration_dict.has(entity)
+
+
+func get_n_rows(table: StringName) -> int:
+	# Works for DB_ENTITIES (w/ or w/out entity names) and ENUMERATION tables.
+	assert(n_rows.has(table),
+		"Specified table '%s' does not exist" % table)
+	return n_rows[table]
+
+
+func get_entity_prefix(table: StringName) -> String:
+	# Works for DB_ENTITIES (w/ entity names) and ENUMERATION tables.
+	# The table must have header of the form 'Prefix/<entity_prefix>'.
+	assert(entity_prefixes.has(table),
+		"Specified table '%s' does not exist" % table)
+	return entity_prefixes[table]
+
 
 
 # All below are DB_ENTITIES table only (possibly modified by DB_ENTITIES_MOD).
-
-func get_db_n_rows(table: StringName) -> int:
-	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	var key := StringName("n_" + table)
-	assert(tables.has(key), "Specified table must be 'DB' format")
-	return tables[key]
-
-
-func get_db_entity_prefix(table: StringName) -> String:
-	# E.g., 'PLANET_' in planets.tsv.
-	# Prefix must be specified for the table's 'name' column.
-	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	var key := StringName("prefix_" + table)
-	assert(tables.has(key),
-			"Specified table must be 'DB' format with 'Prefix/<entity_prefix' header")
-	return tables[key]
 
 
 func get_db_entity_name(table: StringName, row: int) -> StringName:
