@@ -189,7 +189,7 @@ func get_db_true_rows(table: StringName, field: StringName) -> Array[int]:
 		return [] as Array[int]
 	var column_array: Array = table_dict[field]
 	var size := column_array.size()
-	var result := []
+	var result: Array[int] = []
 	var row := 0
 	while row < size:
 		if column_array[row]:
