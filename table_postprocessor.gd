@@ -51,7 +51,7 @@ var _tables: Dictionary # postprocessed data indexed [table_name][field_name][ro
 var _enumerations: Dictionary # indexed by ALL entity names (which are globally unique)
 var _enumeration_dicts: Dictionary # indexed by table name & all entity names
 var _enumeration_arrays: Dictionary # indexed as above
-var _n_rows: Dictionary # indexed by table name
+var _table_n_rows: Dictionary # indexed by table name
 var _entity_prefixes: Dictionary # indexed by table name
 var _wiki_lookup: Dictionary # populated if enable_wiki
 var _precisions: Dictionary # populated if enable_precisions (indexed as tables for FLOAT fields)
@@ -63,7 +63,7 @@ var _table_defaults := {} # only tables that might be modified
 
 func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
-		enumeration_arrays: Dictionary, n_rows: Dictionary, entity_prefixes: Dictionary,
+		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary,
 		enable_wiki: bool, enable_precisions: bool) -> void:
 	
@@ -71,7 +71,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	_enumerations = enumerations
 	_enumeration_dicts = enumeration_dicts
 	_enumeration_arrays = enumeration_arrays
-	_n_rows = n_rows
+	_table_n_rows = table_n_rows
 	_entity_prefixes = entity_prefixes
 	_wiki_lookup = wiki_lookup
 	_precisions = precisions
@@ -134,6 +134,8 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 				_postprocess_db_table(table_res, true)
 			TableDirectives.DB_ANONYMOUS_ROWS:
 				_postprocess_db_table(table_res, false)
+			TableDirectives.ENUMERATION:
+				_postprocess_enumeration(table_res)
 			TableDirectives.DB_ENTITIES_MOD:
 				_postprocess_db_entities_mod(table_res)
 			TableDirectives.WIKI_LOOKUP:
@@ -179,6 +181,12 @@ func _modify_table_enumeration(table_res: TableResource) -> void:
 		assert(!_enumeration_dicts.has(entity_name), "??? entity_name == table_name ???")
 		_enumeration_dicts[entity_name] = enumeration_dict
 		_enumeration_arrays[entity_name] = enumeration_array
+
+
+func _postprocess_enumeration(table_res: TableResource) -> void:
+	var table_name := table_res.table_name
+	_table_n_rows[table_name] = table_res.n_rows
+	_entity_prefixes[table_name] = table_res.entity_prefix
 
 
 func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> void:
@@ -234,7 +242,7 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 			_precisions[table_name][field] = precisions_field
 	
 	_tables[table_name] = table_dict
-	_n_rows[table_name] = n_rows
+	_table_n_rows[table_name] = n_rows
 	
 	if has_entity_names:
 		_entity_prefixes[table_name] = table_res.entity_prefix
@@ -251,7 +259,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 	var table_dict: Dictionary = _tables[modifies_table_name]
 	assert(table_dict.has(&"name"), "Modified table must have 'name' field")
 	var defaults: Dictionary = _table_defaults[modifies_table_name]
-	var n_rows: int = _n_rows[modifies_table_name]
+	var n_rows: int = _table_n_rows[modifies_table_name]
 	var entity_enumeration: Dictionary = _enumeration_dicts[modifies_table_name] # already expanded
 	var n_rows_after_mods := entity_enumeration.size()
 	var mod_column_names := table_res.column_names
@@ -299,7 +307,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 			var default: Variant = defaults[field]
 			for row in new_rows:
 				field_array[row] = default
-		_n_rows[modifies_table_name] = n_rows_after_mods
+		_table_n_rows[modifies_table_name] = n_rows_after_mods
 		# precisions
 		if _enable_precisions:
 			for field in precisions_dict:

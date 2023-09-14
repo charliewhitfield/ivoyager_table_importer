@@ -38,7 +38,7 @@ func _enter_tree():
 	var config := ConfigFile.new()
 	config.load("res://addons/ivoyager_table_importer/plugin.cfg")
 	var version: String = config.get_value("plugin", "version")
-	print("I, Voyager - Table Importer v%s - https://ivoyager.dev" % version)
+	print("I, Voyager - Table Importer (plugin) v%s - https://ivoyager.dev" % version)
 	var editor_gui := get_editor_interface().get_base_control()
 	var table_res_icon := editor_gui.get_theme_icon("Grid", "EditorIcons")
 	add_custom_type("IVTableResource", "Resource", TableResource, table_res_icon)
@@ -48,7 +48,7 @@ func _enter_tree():
 
 
 func _exit_tree():
-	print("Removing I, Voyager - Table Importer")
+	print("Removing I, Voyager - Table Importer (plugin)")
 	remove_custom_type("IVTableResource")
 	remove_import_plugin(table_importer)
 	table_importer = null

@@ -6,8 +6,12 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Under development using Godot 4.1.1.
 
+### Added
+* @DB_ANONYMOUS_ROWS table format.
+
 ### Changed
-* Added more API asserts.
+* More and more informative asserts for table problems and function misuse.
+* [Breaks API] Renamed several IVTableData functions.
 
 ## [v0.0.3] - 2023-09-06
 
@@ -15,7 +19,7 @@ Developed for Godot 4.1.1.
 
 ### Changed
 * Removed @tool from files that are not part of the resource import.
-* [Breaking] Renamed many API functions with `_db_` to make it clear what tables are valid input.
+* [Breaks API] Renamed many API functions with `_db_` to make it clear what tables are valid input.
 
 ## [v0.0.2] - 2023-09-05
 

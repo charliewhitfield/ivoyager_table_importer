@@ -38,7 +38,7 @@ var tables := {} # all table data structures w/ postprocessed data, indexed by t
 var enumerations := {} # indexed by ALL entity names (which are globally unique)
 var enumeration_dicts := {} # indexed by table name & all entity names
 var enumeration_arrays := {} # indexed as above
-var n_rows := {} # indexed by table name
+var table_n_rows := {} # indexed by table name
 var entity_prefixes := {} # indexed by table name (must have header 'Prefix/<entity_name>')
 var wiki_lookup := {} # populated if enable_wiki
 var precisions := {} # populated if enable_precisions (indexed as tables for FLOAT fields)
@@ -80,7 +80,7 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multi
 	precisions.clear()
 	var table_postprocessor := TablePostprocessor.new()
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
-			enumerations, enumeration_dicts, enumeration_arrays, n_rows, entity_prefixes,
+			enumerations, enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes,
 			wiki_lookup, precisions, enable_wiki, enable_precisions)
 
 
@@ -123,23 +123,23 @@ func get_enumeration_array(table_or_entity: StringName) -> Array[StringName]:
 func has_entity_name(table: StringName, entity: StringName) -> bool:
 	# Works for DB_ENTITIES and ENUMERATION tables.
 	assert(enumeration_dicts.has(table),
-		"Specified table '%s' does not exist or does not have entity names" % table)
+			"Specified table '%s' does not exist or does not have entity names" % table)
 	var enumeration_dict: Dictionary = enumeration_dicts[table]
 	return enumeration_dict.has(entity)
 
 
 func get_n_rows(table: StringName) -> int:
 	# Works for DB_ENTITIES, DB_ANONYMOUS_ROWS and ENUMERATION tables.
-	assert(n_rows.has(table),
-		"Specified table '%s' does not exist" % table)
-	return n_rows[table]
+	assert(table_n_rows.has(table),
+			"Specified table '%s' does not exist" % table)
+	return table_n_rows[table]
 
 
 func get_entity_prefix(table: StringName) -> String:
 	# Works for DB_ENTITIES and ENUMERATION tables.
 	# Will return "" unless table has header 'Prefix/<entity_prefix>'.
 	assert(entity_prefixes.has(table),
-		"Specified table '%s' does not exist" % table)
+			"Specified table '%s' does not exist" % table)
 	return entity_prefixes[table]
 
 
