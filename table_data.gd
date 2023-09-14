@@ -30,15 +30,16 @@ const TableUtils := preload("table_utils.gd")
 #
 # For DB format data, index as tables[table_name][field_name][row_int],
 # where row_int = enumerations[entity_name].
-# For these tables it's also possible to get the number of rows and the
-# table-specified row entity prefix (e.g., "PLANETS_") using
-# tables["n_" + table_name] and tables["prefix_" + table_name].
 # 
-# For enum x enum format, index as tables[table_name][row_enum][col_enum].
+# For enum x enum format, index as tables[table_name][row_enum][col_enum], or
+# swap row & column if table has @TRANSPOSE directive.
 
-var tables := {} # postprocessed data
+var tables := {} # all table data structures w/ postprocessed data, indexed by table_name
 var enumerations := {} # indexed by ALL entity names (which are globally unique)
-var enumeration_dicts := {} # use table name or ANY entity name to get entity enumeration dict
+var enumeration_dicts := {} # indexed by table name & all entity names
+var enumeration_arrays := {} # indexed as above
+var table_n_rows := {} # indexed by table name
+var entity_prefixes := {} # indexed by table name (must have header 'Prefix/<entity_name>')
 var wiki_lookup := {} # populated if enable_wiki
 var precisions := {} # populated if enable_precisions (indexed as tables for FLOAT fields)
 
@@ -79,8 +80,8 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multi
 	precisions.clear()
 	var table_postprocessor := TablePostprocessor.new()
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
-			enumerations, enumeration_dicts, wiki_lookup, precisions,
-			enable_wiki, enable_precisions)
+			enumerations, enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes,
+			wiki_lookup, precisions, enable_wiki, enable_precisions)
 
 
 # For get functions, table is "planets", "moons", etc. Most get functions
@@ -96,49 +97,66 @@ func get_row(entity: StringName) -> int:
 	return enumerations.get(entity, -1)
 
 
-func get_entity_enumeration(table: StringName) -> Dictionary:
-	assert(enumeration_dicts.has(table), "Specified table '%s' does not exist" % table)
+func get_enumeration_dict(table_or_entity: StringName) -> Dictionary:
 	# Returns an enum-like dict of row numbers keyed by entity names.
+	# Works for DB_ENTITIES and ENUMERATION tables and 'project_enums'.
+	# Duplicated for safety. You can get internal dictionary directly if you want.
+	assert(enumeration_dicts.has(table_or_entity),
+			"Specified table or entity '%s' does not exist or table does not have entity names"
+			% table_or_entity)
+	var enumeration_dict: Dictionary = enumeration_dicts[table_or_entity]
+	return enumeration_dict.duplicate()
+
+
+func get_enumeration_array(table_or_entity: StringName) -> Array[StringName]:
+	# Returns an array of entity names.
 	# Works for DB_ENTITIES and ENUMERATION tables.
-	return enumeration_dicts[table]
+	# Also works for 'project_enums' IF it is simple sequential: 0, 1, 2,...
+	# Duplicated for safety. You can get internal array directly if you want.
+	assert(enumeration_dicts.has(table_or_entity),
+			"Specified table or entity '%s' does not exist or table does not have entity names"
+			% table_or_entity)
+	var enumeration_array: Array[StringName] = enumeration_arrays[table_or_entity]
+	return enumeration_array.duplicate()
 
 
 func has_entity_name(table: StringName, entity: StringName) -> bool:
 	# Works for DB_ENTITIES and ENUMERATION tables.
-	assert(enumeration_dicts.has(table), "Specified table '%s' does not exist" % table)
-	var enumeration: Dictionary = enumeration_dicts[table]
-	return enumeration.has(entity)
+	assert(enumeration_dicts.has(table),
+			"Specified table '%s' does not exist or does not have entity names" % table)
+	var enumeration_dict: Dictionary = enumeration_dicts[table]
+	return enumeration_dict.has(entity)
 
 
-# All below are DB_ENTITIES table only (possibly modified by DB_ENTITIES_MOD).
-
-func get_db_n_rows(table: StringName) -> int:
-	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	var key := StringName("n_" + table)
-	assert(tables.has(key), "Specified table must be 'DB' format")
-	return tables[key]
+func get_n_rows(table: StringName) -> int:
+	# Works for DB_ENTITIES, DB_ANONYMOUS_ROWS and ENUMERATION tables.
+	assert(table_n_rows.has(table),
+			"Specified table '%s' does not exist" % table)
+	return table_n_rows[table]
 
 
-func get_db_entity_prefix(table: StringName) -> String:
-	# E.g., 'PLANET_' in planets.tsv.
-	# Prefix must be specified for the table's 'name' column.
-	assert(tables.has(table), "Specified table '%s' does not exist" % table)
-	var key := StringName("prefix_" + table)
-	assert(tables.has(key),
-			"Specified table must be 'DB' format with 'Prefix/<entity_prefix' header")
-	return tables[key]
+func get_entity_prefix(table: StringName) -> String:
+	# Works for DB_ENTITIES and ENUMERATION tables.
+	# Will return "" unless table has header 'Prefix/<entity_prefix>'.
+	assert(entity_prefixes.has(table),
+			"Specified table '%s' does not exist" % table)
+	return entity_prefixes[table]
+
+
+
+# All below work only for DB_ENTITIES and DB_ANONYMOUS_ROWS.
 
 
 func get_db_entity_name(table: StringName, row: int) -> StringName:
+	# Returns &"" if table is DB_ANONYMOUS_ROWS or if row is out of bounds
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	var table_dict: Dictionary = tables[table]
-	if !table_dict.has(&"name"):
+	if !enumeration_arrays.has(table):
 		return &""
-	var name_array: Array[StringName] = table_dict[&"name"]
-	if row < 0 or row >= name_array.size():
+	var enumeration_array: Array[StringName] = enumeration_arrays[table]
+	if row < 0 or row >= enumeration_array.size():
 		return &""
-	return name_array[row]
+	return enumeration_array[row]
 
 
 func get_db_field_array(table: StringName, field: StringName) -> Array:
@@ -189,7 +207,7 @@ func get_db_true_rows(table: StringName, field: StringName) -> Array[int]:
 		return [] as Array[int]
 	var column_array: Array = table_dict[field]
 	var size := column_array.size()
-	var result := []
+	var result: Array[int] = []
 	var row := 0
 	while row < size:
 		if column_array[row]:
@@ -204,11 +222,12 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 	# Always true for Type BOOL.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return false
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	var value: Variant = table_dict[field][row]
 	var type := typeof(value)
@@ -229,11 +248,12 @@ func db_has_float_value(table: StringName, field: StringName, row := -1, entity 
 	# Returns true if table has field and float value is not NAN.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return false
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return !is_nan(table_dict[field][row])
 
@@ -242,11 +262,12 @@ func get_db_string(table: StringName, field: StringName, row := -1, entity := &"
 	# Use for field Type = STRING; returns "" if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return ""
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -256,11 +277,12 @@ func get_db_string_name(table: StringName, field: StringName, row := -1, entity 
 	# Use for field Type = STRING_NAME; returns &"" if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return &""
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -269,11 +291,12 @@ func get_db_bool(table: StringName, field: StringName, row := -1, entity := &"")
 	# Use for field Type = BOOL; returns false if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return false
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -282,11 +305,12 @@ func get_db_int(table: StringName, field: StringName, row := -1, entity := &"") 
 	# Use for field Type = INT; returns -1 if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return -1
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -295,11 +319,12 @@ func get_db_float(table: StringName, field: StringName, row := -1, entity := &""
 	# Use for field Type = FLOAT; returns NAN if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return NAN
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -308,11 +333,12 @@ func get_db_array(table: StringName, field: StringName, row := -1, entity := &""
 	# Use for field Type = ARRAY[xxxx]; returns [] if missing
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return []
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return table_dict[field][row]
 
@@ -321,11 +347,12 @@ func get_db_float_precision(table: StringName, field: StringName, row := -1, ent
 	# field must be type FLOAT
 	assert(precisions.has(table),
 			"No precisions for '%s'; did you set enable_precisions = true?" % table)
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	var precisions_dict: Dictionary = precisions[table]
 	if !precisions_dict.has(field):
 		return -1
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	return precisions_dict[field][row]
 
@@ -335,8 +362,9 @@ func get_db_least_float_precision(table: StringName, fields: Array[StringName], 
 	# All fields must be type FLOAT
 	assert(precisions.has(table),
 			"No precisions for '%s'; did you set enable_precisions = true?" % table)
-	assert((row == -1) != (entity == ""), "Requires either row or entity (not both)")
+	assert((row == -1) != (entity == &""), "Requires either row or entity (not both)")
 	if entity:
+		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	var min_precision := 9999
 	for field in fields:

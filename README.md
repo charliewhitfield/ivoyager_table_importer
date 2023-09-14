@@ -52,7 +52,7 @@ We support only tab-delimited files with extension 'tsv'.
 
 Any line starting with '@' is read as a table directive, which is used to specify one of several table formats and provide additional format-specific instructions. These can be at any line in the file. It may be convenient to include these at the end as many table viewers (including GitHub web pages) assume field names in the top line.
 
-Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, optionally followed by '=' and then the table name. If omitted, table name is taken from the base file name (e.g., 'planets' for 'res://path/planets.tsv' file). Several table formats don't need a table format specifier as the importer can figure it out from other clues. Some table formats allow or require additional specific directives. See details in format sections below. (' = ' is always ok in place of '='.)
+Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@DB_ANONYMOUS_ROWS`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, optionally followed by '=' and then the table name. If omitted, table name is taken from the base file name (e.g., 'planets' for 'res://path/planets.tsv' file). Several table formats don't need a table format specifier as the importer can figure it out from other clues. Some table formats allow or require additional specific directives. See details in format sections below. (' = ' is always ok in place of '='.)
 
 For debugging or work-in-progress, you can prevent any imported table from being processed using `@DONT_PARSE`.
 
@@ -60,6 +60,11 @@ For debugging or work-in-progress, you can prevent any imported table from being
 
 Any line starting with '#' is ignored. Additionally, entire columns are ignored if the column 'field' name begins with '#'.
 
+#### Cell Processing
+
+All cells have some processing on import before Type-processing described below:
+* Double-quotes (") will be removed if they enclose the cell on both sides.
+* A prefix single-quote ('), if present, will be removed.
 
 #### Table Editor Warning!
 
@@ -72,7 +77,7 @@ Most .csv/.tsv file editors will 'interpret' and change your table data, especia
 Optional specifier: `@DB_ENTITIES[=<table_name>]` (table_name defaults to the base file name)  
 Optional directive: `@DONT_PARSE`
 
-This is the default table format assumed if no table directives are present. The format has database-style entities (as rows) and fields (as columns). Entities may or may not have names. If present, entity names are treated as enumerations, which are accessible in other tables (in any field with Type=INT) and must be globally unique.
+This is the default table format assumed by the importer if other conditions (described under formats below) don't exist. The format has database-style entities (as rows) and fields (as columns). The first column of each row is taken as an 'entity name' and used to create an implicit 'name' field. Entity names are treated as enumerations and are accessible in other tables if the enumeration name appears in a field with Type=INT. Entity names must be globally unique.
 
 Processed data are structured as a dictionary-of-statically-typed-field-arrays. Access the dictionary directly or use 'get' methods in IVTableData.
 
@@ -92,13 +97,9 @@ After field names and before data, tables can have the following header rows in 
 * `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts table floats to SI base units in the postprocessed 'internal' data. Default unit conversions are defined by 'unit_multipliers' and 'unit_lambdas' dictionaries [here](https://github.com/charliewhitfield/ivoyager_table_importer/blob/develop/table_unit_defaults.gd). Unit symbols and/or internal representation can be changed by specifying replacement conversion dictionaries in the `postprocess_tables()` call.
 * `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-empty cells and `Default` (if specified) with provided prefix text. To prefix the column 0 implicit 'name' field, use `Prefix/<entity prefix>`. E.g., we use `Prefix/PLANET_` in [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all entity names with 'PLANET_'.
 
-#### Data Rows
+#### Entity Names
 
-* **Entity Name** (optional): The left-most 0-column is special. It can either specify an entity name or be empty, but entity name must be consistently present or absent for the entire table! If present, entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<entity prefix>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can obtain row_number from the 'enumerations' dictionary (index with any entity name) or obtain an enum-like dictionary of entity names from the 'enumeration_dicts' dictionary (index with table_name or any entity_name).
-
-All data cells have some processing on import before Type-processing described above:
-* Double-quotes (") will be removed if they enclose the cell on both sides.
-* A prefix single-quote (') will be removed.
+The left-most 0-column of each content row specifies an 'entity name'. Entity names are included in an implicit field called 'name' with Type=STRING_NAME. Prefix can be specified for the 0-column using header `Prefix/<entity prefix>`. Entity names (after prefixing) must be globally unique. They can be used in _any_ table as an enumeration that evaluates to the row number (INT) in the defining table. You can obtain row_number from the 'enumerations' dictionary (index with any entity name) or obtain an enum-like dictionary of entity names from the 'enumeration_dicts' dictionary (index with table_name or any entity_name) or obtain a enumeration array of entity names from the 'enumeration_arrays' dictionary.
 
 #### Wiki
 
@@ -137,10 +138,16 @@ This table modifies an existing DB_ENTITIES table. It can add entities or fields
 
 Rules exactly follow DB_ENTITIES except that entity names _must_ be present and they _may or may not already exist_ in the DB_ENTITIES table being modified. If an entity name already exists, the mod table data will overwrite existing values. Otherwise, a new entity/row is added to the existing table. Similarly, field names may or may not already exist. If a new field/column is specified, then all previously existing entities (that are absent in the mod table) will be assigned the default value for this field.
 
+## DB_ANONYMOUS_ROWS Format
+
+Optional specifier: `@DB_ANONYMOUS_ROWS[=<table_name>]` (table_name defaults to the base file name)   
+Optional directive: `@DONT_PARSE`
+
+This table is exactly like DB_ENTITIES except that row names (the first column of each content row) are empty. The importer can identify this situation without the specifier directive. (Inconsistent use of row names will cause an import error assert.) This table will not create entity enumerations and does not have a 'name' field and cannot be modified by DB_ENTITIES_MOD, but is in other ways like DB_ENTITIES.
+
 ## ENUMERATION Format
 
 [Example Table](https://github.com/t2civ/astropolis_public/blob/master/data/tables/major_strata.tsv)
-
 
 Optional specifier: `@ENUMERATION[=<table_name>]` (table_name defaults to the base file name)  
 Optional directive: `@DONT_PARSE`

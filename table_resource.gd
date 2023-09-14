@@ -20,18 +20,20 @@
 @tool
 extends Resource
 
-# The resourse only needs to be loaded for data postprocessing by
+# The imported resource only needs to be loaded for data postprocessing by
 # table_postprocessor.gd. After that, all processed table data is available in
-# autoload singleton 'IVTableData' (table_data.gd). The resourses are
+# autoload singleton 'IVTableData' (table_data.gd). The resources are
 # de-referenced so they free themselves and go out of memory.
 #
 # Data here is preprocessed for compactness and for the needs of the
-# postprocessor. It isn't very usefull in its preprocessed form.
+# postprocessor. It isn't usefull in its preprocessed form except for table
+# debugging.
 
 enum TableDirectives {
 	# table formats
 	DB_ENTITIES,
 	DB_ENTITIES_MOD,
+	DB_ANONYMOUS_ROWS,
 	ENUMERATION,
 	WIKI_LOOKUP,
 	ENUM_X_ENUM,
@@ -52,11 +54,12 @@ const ALLOWED_SPECIFIC_DIRECTIVES := [
 	[TableDirectives.MODIFIES],
 	[],
 	[],
+	[],
 	[TableDirectives.DATA_TYPE, TableDirectives.DATA_DEFAULT, TableDirectives.DATA_UNIT,
 			TableDirectives.TRANSPOSE],
 ]
 
-const REQUIRES_ARGUMENT := [false, false, false, false, false, false,
+const REQUIRES_ARGUMENT := [false, false, false, false, false, false, false,
 		true, true, true, true, false, false]
 
 const VERBOSE := true # prints a single line on import
@@ -70,8 +73,9 @@ const VERBOSE := true # prints a single line on import
 #  - All have 'n_rows' & 'n_columns'
 #  - ENUMERATION has 'row_names' & 'entity_prefix'
 #  - WIKI_LOOKUP has 'column_names', 'row_names' & 'dict_of_field_arrays'
-#  - DB_ENTITIES has 'column_names', [optionally 'row_names'] & all under 'db style'
-#  - DB_ENTITIES_MOD has above (always 'row_names') plus 'modifies_table_name'
+#  - DB_ENTITIES has 'column_names', 'row_names' & all under 'db style'
+#  - DB_ENTITIES_MOD has above plus 'modifies_table_name'
+#  - DB_ANONYMOUS_ROWS has 'column_names' & all under 'db style'
 #  - ENUM_X_ENUM has 'column_names', 'row_names' & all under 'enum x enum'
 
 @export var column_names: Array[StringName] # fields if applicable
@@ -176,8 +180,10 @@ func import_file(file: FileAccess, source_path: String) -> void:
 			table_format = TableDirectives.ENUMERATION
 		elif specific_directives.has(TableDirectives.MODIFIES):
 			table_format = TableDirectives.DB_ENTITIES_MOD
-		else:
+		elif cells[-1][0]: # last row name (we expect all or none, and test this below)
 			table_format = TableDirectives.DB_ENTITIES
+		else:
+			table_format = TableDirectives.DB_ANONYMOUS_ROWS
 	if !table_name:
 		table_name = StringName(path.get_file().get_basename())
 	
@@ -195,19 +201,23 @@ func import_file(file: FileAccess, source_path: String) -> void:
 		TableDirectives.DB_ENTITIES:
 			if VERBOSE:
 				print("Importing DB_ENTITIES " + path)
-			_preprocess_db_style(cells, false, false, false)
+			_preprocess_db_style(cells, false, false, false, true)
 		TableDirectives.DB_ENTITIES_MOD:
 			if VERBOSE:
 				print("Importing DB_ENTITIES_MOD " + path)
-			_preprocess_db_style(cells, true, false, false)
+			_preprocess_db_style(cells, true, false, false, true)
+		TableDirectives.DB_ANONYMOUS_ROWS:
+			if VERBOSE:
+				print("Importing DB_ANONYMOUS_ROWS " + path)
+			_preprocess_db_style(cells, false, false, false, false)
 		TableDirectives.ENUMERATION:
 			if VERBOSE:
 				print("Importing ENUMERATION " + path)
-			_preprocess_db_style(cells, false, true, false)
+			_preprocess_db_style(cells, false, true, false, true)
 		TableDirectives.WIKI_LOOKUP:
 			if VERBOSE:
 				print("Importing WIKI_LOOKUP " + path)
-			_preprocess_db_style(cells, false, false, true)
+			_preprocess_db_style(cells, false, false, true, true)
 		TableDirectives.ENUM_X_ENUM:
 			if VERBOSE:
 				print("Importing ENUM_X_ENUM " + path)
@@ -215,20 +225,22 @@ func import_file(file: FileAccess, source_path: String) -> void:
 
 
 func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: bool,
-		is_wiki_lookup: bool) -> void:
+		is_wiki_lookup: bool, has_row_names: bool) -> void:
 	
 	# specific directives
 	var modifies_pos := specific_directives.find(TableDirectives.MODIFIES)
 	if modifies_pos >= 0:
 		modifies_table_name = StringName(specific_directive_args[modifies_pos])
 	
-	# dictionaries we'll populate
+	# dictionaries & arrays we'll populate
 	if !is_enumeration:
 		dict_of_field_arrays = {}
 		if !is_wiki_lookup:
 			postprocess_types = {} # indexed by fields
 			default_values = {} # indexed by fields
 			unit_names = {} # indexed by FLOAT fields
+	if has_row_names:
+		row_names = []
 	
 	# temp working dicts
 	var prefixes := {}
@@ -241,7 +253,6 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 	var content_row := 0
 	var is_header := true
 	var has_types := false
-	var has_row_names := false
 	
 	# handle field names
 	if !is_enumeration:
@@ -349,30 +360,21 @@ func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: boo
 			is_header = false
 		
 		# process content row
-		if content_row == 0:
-			if line_array[0]:
-				has_row_names = true
-				row_names = []
-			else:
-				assert(!is_mod and !is_enumeration and !is_wiki_lookup,
-						"Missing required row name in %s, %s" % [path, row])
-		elif has_row_names:
+		if has_row_names:
 			assert(line_array[0], "Missing expected row name in %s, %s" % [path, row])
 		else:
 			assert(!line_array[0],
-					"Inconsistent use of row name; must be all or none in %s, %s" % [path, row])
+					"DB_ANONYMOUS_ROWS table has row name in %s, %s" % [path, row])
 		
 		if has_row_names:
-#			var prefix: String = prefixes.get(&"name", "")
 			var row_name := StringName(entity_prefix + line_array[0])
 			assert(!row_names.has(row_name),
 					"Duplicate row_name '%s' in %s, %s" % [row_name, path, row])
 			row_names.append(row_name)
-			if is_enumeration: # we only needed row name
+			if is_enumeration: # We're done! We only needed row name.
 				content_row += 1
 				row += 1
 				continue
-#			dict_of_field_arrays[&"name"][content_row] = row_name
 		
 		# process content columns
 		for column in skip_column_0_iterator:
