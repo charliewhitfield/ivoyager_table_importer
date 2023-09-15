@@ -229,7 +229,7 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 			assert(has_entity_names, "Wiki lookup column requires row names")
 			if _enable_wiki:
 				for row in n_rows:
-					var wiki_title: StringName = new_field[row]
+					var wiki_title: String = new_field[row]
 					if wiki_title:
 						var row_name := row_names[row]
 						_wiki_lookup[row_name] = wiki_title
@@ -364,7 +364,7 @@ func _postprocess_wiki_lookup(table_res: TableResource) -> void:
 		var row_name := row_names[row]
 		var import_value := wiki_field[row]
 		if import_value:
-			_wiki_lookup[row_name] = _get_postprocess_value(import_value, TYPE_STRING_NAME,
+			_wiki_lookup[row_name] = _get_postprocess_value(import_value, TYPE_STRING,
 					&"", str_array)
 
 
