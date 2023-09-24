@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
+class_name IVTableUtils
 extends Object
 
 # User can supply 'unit_multipliers' and 'unit_lambdas' when calling
@@ -24,68 +25,167 @@ extends Object
 # If not set at or before postprocess_tables(), they will be set to the
 # default conversion dictionaries defined in table_unit_defaults.gd.
 
+const DPRINT := false
 
 static var unit_multipliers: Dictionary
 static var unit_lambdas: Dictionary
 
 
+
+static func is_valid_unit(unit: StringName, parse_compound_unit := false) -> bool:
+	# Tests whether 'unit' string is valid for convert_quantity().
+	return !is_nan(convert_quantity(1.0, unit, true, parse_compound_unit, false))
+
+
 static func convert_quantity(x: float, unit: StringName, to_internal := true,
-		handle_unit_prefix := false) -> float:
-	# Converts x in specified units to internal representation (to_internal =
-	# true) or from internal to specified units (to_internal = false).
+		parse_compound_unit := true, assert_error := true) -> float:
+	# Converts 'x' in specified 'unit' to internal float value, or from
+	# internal value if to_internal == false. Will attempt to parse the 'unit'
+	# string if parse_compound_unit == true. Throws an error if 'unit' is not
+	# present in conversion dictionaries or it can't be parsed, or returns NAN
+	# if assert_error == false.
 	#
-	# If handle_unit_prefix == true, we handle simple unit prefixes '10^x ' and
-	# '1/'. Valid examples: "1/Cy", "10^24 kg", "1/(10^3 yr)".
+	# If 'unit' is in 'unit_multipliers' or 'unit_lambdas', then no parsing is
+	# attempted. The dictionaries can have compound units like 'm/s^2' for
+	# quicker lookup without parsing.
 	#
-	# After prefix handling (if used), 'unit' must be a dictionary key in either
-	# 'unit_multipliers' or 'unit_lambdas'.
-	
-	if handle_unit_prefix:
-		if unit.begins_with("1/"):
-			var unit_str := unit.trim_prefix("1/")
-			if unit_str.begins_with("(") and unit_str.ends_with(")"):
-				unit_str = unit_str.trim_prefix("(").trim_suffix(")")
-			unit = StringName(unit_str)
-			to_internal = !to_internal
-		if unit.begins_with("10^"):
-			var unit_str := unit.trim_prefix("10^")
-			var space_pos := unit_str.find(" ")
-			assert(space_pos > 0, "A space must follow '10^xx'")
-			var exponent_str := unit_str.substr(0, space_pos)
-			assert(exponent_str.is_valid_int())
-			var pre_multiplier := 10.0 ** exponent_str.to_int()
-			unit_str = unit_str.substr(space_pos + 1, 999)
-			unit = StringName(unit_str)
-			x *= pre_multiplier
+	# See parsing comments in get_parsed_unit_multiplier().
+	if !unit:
+		return x
 	
 	var multiplier: float = unit_multipliers.get(unit, 0.0)
 	if multiplier:
 		return x * multiplier if to_internal else x / multiplier
-	assert(unit_lambdas.has(unit), "Unknown unit symbol '%s'" % unit)
-	var lambda: Callable = unit_lambdas[unit]
-	return lambda.call(x, to_internal)
-
-
-static func is_valid_unit(unit: StringName, handle_unit_prefix := false) -> bool:
-	# Tests whether 'unit' string is valid for convert_quantity().
-	if handle_unit_prefix:
-		if unit.begins_with("1/"):
-			var unit_str := unit.trim_prefix("1/")
-			if unit_str.begins_with("(") and unit_str.ends_with(")"):
-				unit_str = unit_str.trim_prefix("(").trim_suffix(")")
-			unit = StringName(unit_str)
-		if unit.begins_with("10^"):
-			var unit_str := unit.trim_prefix("10^")
-			var space_pos := unit_str.find(" ")
-			if space_pos <= 0:
-				return false
-			var exponent_str := unit_str.substr(0, space_pos)
-			if !exponent_str.is_valid_int():
-				return false
-			unit_str = unit_str.substr(space_pos + 1, 999)
-			unit = StringName(unit_str)
 	
-	return unit_multipliers.has(unit) or unit_lambdas.has(unit)
+	if unit_lambdas.has(unit):
+		var lambda: Callable = unit_lambdas[unit]
+		return lambda.call(x, to_internal)
+	
+	if !parse_compound_unit:
+		assert(!assert_error,
+				"'%s' is not in unit_multipliers or unit_lambdas dictionaries" % unit)
+		return NAN
+	
+	multiplier = get_parsed_unit_multiplier(unit, assert_error)
+	return x * multiplier if to_internal else x / multiplier
+
+
+static func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
+	# Parsing isn't super fast. To optimize, add commonly used compound units
+	# to your 'unit_multipliers' dictionary.
+	#
+	# Parser rules:
+	#
+	#   1. The compound unit string must be composed only of valid multiplier
+	#      units (i.e., in 'unit_multiplier' dictionary), valid float numbers,
+	#      unit operators, and parentheses '(' and ')'.
+	#   2. Allowed unit operatiors are "^", "/", and " ", corresponding to
+	#      exponentiation, division and multiplication, in that order of
+	#      precidence.
+	#   3. Operators must have a valid non-operator substring on each side
+	#      without adjacent spaces. Spaces are ONLY allowed as multiplication
+	#      operators.
+	#   4. Each parenthesis opening '(' must have a closing ')'.
+	#
+	# Example valid unit strings for parsing:
+	#
+	#   m/s^2
+	#   m^3/(kg s^2)
+	#   1e24
+	#   10^24
+	#   10^24 kg
+	#   1/d
+	#   d^-1
+	#   m^0.5
+	
+	# debug print unit strings & substrings
+	if DPRINT:
+		print(unit_str)
+	
+	if !unit_str:
+		assert(!assert_error, "Empty unit string or substring."
+				+ " Could be a disallowed space that is not a multiplication operator.")
+		return NAN
+	
+	var multiplier: float = unit_multipliers.get(unit_str, 0.0)
+	if multiplier:
+		return multiplier
+	
+	if unit_str.is_valid_float():
+		return unit_str.to_float()
+	
+	var length := unit_str.length()
+	var position := 0
+	var enclosure_level := 0
+	
+	# check for matching enclosure parentheses
+	if unit_str[0] == "(":
+		position = 1
+		enclosure_level = 1
+		while position < length:
+			var char := unit_str[position]
+			if char == "(":
+				enclosure_level += 1
+			elif char == ")":
+				enclosure_level -= 1
+				if enclosure_level == 0:
+					if position == length - 1:
+						return get_parsed_unit_multiplier(
+								unit_str.trim_prefix("(").trim_suffix(")"), assert_error)
+					break # opening '(' matched before the end
+				if enclosure_level < 0:
+					assert(!assert_error,
+							"Unmatched ')' in unit string or substring '%s'" % unit_str)
+					return NAN
+			position += 1
+	
+	# multiply two parts on non-enclosed " "
+	if unit_str.find(" ") != -1:
+		position = 0
+		enclosure_level = 0
+		while position < length:
+			var char := unit_str[position]
+			if char == "(":
+				enclosure_level += 1
+			elif char == ")":
+				enclosure_level -= 1
+			elif char == " " and enclosure_level == 0:
+				return (get_parsed_unit_multiplier(unit_str.left(position), assert_error)
+						* get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
+			position += 1
+	
+	# divide two parts on non-enclosed "/"
+	if unit_str.find("/") != -1:
+		position = 0
+		enclosure_level = 0
+		while position < length:
+			var char := unit_str[position]
+			if char == "(":
+				enclosure_level += 1
+			elif char == ")":
+				enclosure_level -= 1
+			elif char == "/" and enclosure_level == 0:
+				return (get_parsed_unit_multiplier(unit_str.left(position), assert_error)
+						/ get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
+			position += 1
+	
+	# exponentiate two parts on non-enclosed "^"
+	if unit_str.find("^") != -1:
+		position = 0
+		enclosure_level = 0
+		while position < length:
+			var char := unit_str[position]
+			if char == "(":
+				enclosure_level += 1
+			elif char == ")":
+				enclosure_level -= 1
+			elif char == "^" and enclosure_level == 0:
+				return pow(get_parsed_unit_multiplier(unit_str.left(position), assert_error),
+						 get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
+			position += 1
+	
+	assert(!assert_error, "Could not parse unit string or substring '%s'" % unit_str)
+	return NAN
 
 
 static func c_unescape_patch(text: String) -> String:
