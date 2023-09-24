@@ -7,6 +7,7 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Under development using Godot 4.1.1.
 
 ### Added
+* A compound unit string parser! It can parse compound units like 'm^3/(kg s^2)'.
 * @DB_ANONYMOUS_ROWS table format.
 
 ### Changed

@@ -26,7 +26,8 @@ extends EditorPlugin
 # Note: There is talk in Godot issues of depreciating 'add_custom_type()'.
 # We prefer this method over file 'class_name' because it does not involve
 # .godot/global_script_class_cache.cfg, which is buggy as of Godot 4.1.1 (fails
-# to update changes outside of editor; we'll open an issue soon!).
+# to update changes outside of editor; we'll open an issue if this isn't fixed
+# in 4.2-beta builds).
 
 const TableResource := preload("table_resource.gd")
 const TableImporter := preload("table_importer.gd")
