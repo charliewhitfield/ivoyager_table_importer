@@ -78,21 +78,21 @@ const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER * METER * METER / (KG * SECO
 # Unit symbols below mostly follow:
 # https://en.wikipedia.org/wiki/International_System_of_Units
 #
-# There are some odd choices here because this was developed for our solar
-# system simulator. You can make your own conversion dicts!
+# If you want something different, you can make your own conversion dicts!
 #
 # See 'convert_quantity()' in table_utils.gd. It will first look for a unit
-# symbol in 'unit_multipliers' and then in 'unit_lambdas'.
+# symbol in 'unit_multipliers', then in 'unit_lambdas', then attempt to parse
+# a compound unit string. Compound units can be added to dictionary for quick
+# lookup rather than slow parsing.
 
 static var unit_multipliers := {
-	# Duplicated symbols have leading underscore(s).
-
+	# Duplicated symbols have leading underscore.
 	# time
 	&"s" : SECOND,
 	&"min" : MINUTE,
 	&"h" : HOUR,
 	&"d" : DAY,
-	&"a" : YEAR, # official Julian year symbol
+	&"a" : YEAR, # Julian year symbol
 	&"y" : YEAR,
 	&"yr" : YEAR,
 	&"Cy" : CENTURY,
@@ -117,10 +117,7 @@ static var unit_multipliers := {
 	&"K" : KELVIN,
 	# frequency
 	&"Hz" : 1.0 / SECOND,
-	&"d^-1" : 1.0 / DAY,
-	&"a^-1" : 1.0 / YEAR,
-	&"y^-1" : 1.0 / YEAR,
-	&"yr^-1" : 1.0 / YEAR,
+	&"1/Cy" : 1.0 / CENTURY,
 	# area
 	&"m^2" : METER * METER,
 	&"km^2" : KM * KM,
@@ -129,14 +126,10 @@ static var unit_multipliers := {
 	&"l" : LITER,
 	&"L" : LITER,
 	&"m^3" : METER * METER * METER,
-	&"km^3" : KM * KM * KM,
 	# velocity
 	&"m/s" : METER / SECOND,
 	&"km/s" : KM / SECOND,
-	&"km/h" : KM / HOUR,
-	&"au/a" : AU / YEAR,
 	&"au/Cy" : AU / CENTURY,
-	&"AU/Cy" : AU / CENTURY,
 	&"c" : SPEED_OF_LIGHT,
 	# acceleration/gravity
 	&"m/s^2" : METER / (SECOND * SECOND),
@@ -144,18 +137,11 @@ static var unit_multipliers := {
 	# angular velocity
 	&"rad/s" : 1.0 / SECOND, 
 	&"deg/d" : DEG / DAY,
-	&"deg/a" : DEG / YEAR,
 	&"deg/Cy" : DEG / CENTURY,
 	# particle density
 	&"m^-3" : 1.0 / (METER * METER * METER),
 	# density
-	&"kg/km^3" : KG / (KM * KM * KM),
 	&"g/cm^3" : GRAM / (CM * CM * CM),
-	# mass rate
-	&"kg/s" : KG / SECOND,
-	&"g/d" : GRAM / DAY,
-	&"kg/d" : KG / DAY,
-	&"t/d" : TONNE / DAY,
 	# force
 	&"N" : NEWTON,
 	# pressure
@@ -167,20 +153,16 @@ static var unit_multipliers := {
 	&"kJ" : 1e3 * JOULE,
 	&"MJ" : 1e6 * JOULE,
 	&"GJ" : 1e9 * JOULE,
-	&"TJ" : 1e12 * JOULE,
 	&"Wh" : WATT * HOUR,
 	&"kWh" : 1e3 * WATT * HOUR,
 	&"MWh" : 1e6 * WATT * HOUR,
 	&"GWh" : 1e9 * WATT * HOUR,
-	&"TWh" : 1e12 * WATT * HOUR,
 	&"eV" : ELECTRONVOLT,
 	# power
 	&"W" : WATT,
 	&"kW" : 1e3 * WATT,
 	&"MW" : 1e6 * WATT,
 	&"GW" : 1e9 * WATT,
-	&"TW" : 1e12 * WATT,
-	&"GJ/d" : 1e9 * JOULE / DAY,
 	# luminous intensity / luminous flux
 	&"cd" : CANDELA,
 	&"lm" : CANDELA, # 1 lm = 1 cd·sr, but sr is dimensionless
@@ -194,27 +176,27 @@ static var unit_multipliers := {
 	&"Wb" : WEBER,
 	# magnetic flux density
 	&"T" : TESLA,
-	# GM
-	&"km^3/s^2" : STANDARD_GM,
-	&"m^3/s^2" : METER * METER * METER / (SECOND * SECOND),
-	# gravitational constant
-	&"m^3/(kg s^2)" : METER * METER * METER / (KG * SECOND * SECOND),
-	&"km^3/(kg s^2)" : KM * KM * KM / (KG * SECOND * SECOND),
-	# information (base 10; KiB, MiB, etc. would take some coding...)
+	# information
 	&"bit" : 1.0,
-	&"b" : 1.0,
-	&"kb" : 1e3,
-	&"Mb" : 1e6,
-	&"Gb" : 1e9,
-	&"Tb" : 1e12,
-	&"Byte" : 8.0,
 	&"B" : 8.0,
+	# information (base 10)
+	&"kbit" : 1e3,
+	&"Mbit" : 1e6,
+	&"Gbit" : 1e9,
+	&"Tbit" : 1e12,
 	&"kB" : 8e3,
 	&"MB" : 8e6,
 	&"GB" : 8e9,
 	&"TB" : 8e12,
-	# misc
-	&"deg/Cy^2" : DEG / (CENTURY * CENTURY),
+	# information (base 2)
+	&"Kibit" : 1024.0,
+	&"Mibit" : 1024.0 ** 2,
+	&"Gibit" : 1024.0 ** 3,
+	&"Tibit" : 1024.0 ** 4,
+	&"KiB" : 8.0 * 1024.0,
+	&"MiB" : 8.0 * 1024.0 ** 2,
+	&"GiB" : 8.0 * 1024.0 ** 3,
+	&"TiB" : 8.0 * 1024.0 ** 4,
 }
 
 static var unit_lambdas := { # can't make const!

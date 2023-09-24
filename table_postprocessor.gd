@@ -41,7 +41,6 @@ enum TableDirectives { # copy from table_resource.gd
 
 
 const TableResource := preload("table_resource.gd")
-const TableUtils := preload("table_utils.gd")
 
 # TODO: Proper localization. I'm not sure if we're supposed to use get_locale()
 # from OS or TranslationServer, or how to do fallbacks for missing translations.
@@ -60,12 +59,17 @@ var _enable_precisions: bool
 
 var _table_defaults := {} # only tables that might be modified
 
+var _start_msec: int
+var _count: int
 
 func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary,
 		enable_wiki: bool, enable_precisions: bool) -> void:
+	
+	_start_msec = Time.get_ticks_msec()
+	_count = 0
 	
 	_tables = tables
 	_enumerations = enumerations
@@ -142,6 +146,9 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 				_postprocess_wiki_lookup(table_res)
 			TableDirectives.ENUM_X_ENUM:
 				_postprocess_enum_x_enum(table_res)
+	
+	var msec := Time.get_ticks_msec() - _start_msec
+	print("Processed %s table items in %s msec" % [_count, msec])
 
 
 func _add_table_enumeration(table_res: TableResource) -> void:
@@ -187,6 +194,7 @@ func _postprocess_enumeration(table_res: TableResource) -> void:
 	var table_name := table_res.table_name
 	_table_n_rows[table_name] = table_res.n_rows
 	_entity_prefixes[table_name] = table_res.entity_prefix
+	_count += _table_n_rows[table_name]
 
 
 func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> void:
@@ -218,6 +226,7 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 		new_field.resize(n_rows)
 		for row in n_rows:
 			new_field[row] = _get_postprocess_value(import_field[row], type, unit, str_array)
+			_count += 1
 		table_dict[field] = new_field
 		# keep table default (temporarly) in case this table is modified
 		if has_entity_names:
@@ -287,6 +296,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 		new_field.resize(n_rows)
 		for row in n_rows:
 			new_field[row] = postprocess_default
+			_count += 1
 		table_dict[field] = new_field
 		# keep default
 		defaults[field] = postprocess_default
@@ -307,6 +317,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 			var default: Variant = defaults[field]
 			for row in new_rows:
 				field_array[row] = default
+				_count += 1
 		_table_n_rows[modifies_table_name] = n_rows_after_mods
 		# precisions
 		if _enable_precisions:
@@ -325,6 +336,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 			var unit: StringName = mod_unit_names.get(field, &"")
 			var import_value: Variant = mod_dict_of_field_arrays[field][mod_row]
 			table_dict[field][row] = _get_postprocess_value(import_value, type, unit, str_array)
+			_count += 1
 	
 	# add/overwrite wiki lookup
 	if _enable_wiki:
@@ -366,6 +378,7 @@ func _postprocess_wiki_lookup(table_res: TableResource) -> void:
 		if import_value:
 			_wiki_lookup[row_name] = _get_postprocess_value(import_value, TYPE_STRING,
 					&"", str_array)
+			_count += 1
 
 
 func _postprocess_enum_x_enum(table_res: TableResource) -> void:
@@ -409,6 +422,7 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 			var column: int = column_enumeration[column_name]
 			var import_value: Variant = import_array_of_arrays[import_row][import_column]
 			var postprocess_value = _get_postprocess_value(import_value, type, unit, str_array)
+			_count += 1
 			table_array_of_arrays[row][column] = postprocess_value
 	
 	_tables[table_name] = table_array_of_arrays
@@ -447,7 +461,7 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		var import_float := import_str.lstrip("~").to_float()
 		if !unit:
 			return import_float
-		return TableUtils.convert_quantity(import_float, unit, true, true)
+		return IVTableUtils.convert_quantity(import_float, unit, true, true)
 	
 	if type == TYPE_STRING:
 		if import_value == null:
@@ -455,7 +469,7 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
 		var import_str := str_array[import_value]
 		import_str = import_str.c_unescape() # does not process '\uXXXX'
-		import_str = TableUtils.c_unescape_patch(import_str)
+		import_str = IVTableUtils.c_unescape_patch(import_str)
 		return import_str
 	
 	if type == TYPE_STRING_NAME:

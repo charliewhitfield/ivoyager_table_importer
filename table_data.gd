@@ -21,18 +21,20 @@ extends Node
 
 # This node is loaded as singleton 'IVTableData' by table_plugin.gd.
 # All user interface is here!
-
-const TablePostprocessor := preload("table_postprocessor.gd")
-const TableUtils := preload("table_utils.gd")
-
+#
 # Data dictionaries are populated only after postprocess_tables() is called.
-# You can access data directly in these dictionaries or use API below.
+# Access data directly in dictionaries or use API.
+#
+# Postprocessed table data is in dictionary 'tables'.
 #
 # For DB format data, index as tables[table_name][field_name][row_int],
 # where row_int = enumerations[entity_name].
 # 
 # For enum x enum format, index as tables[table_name][row_enum][col_enum], or
 # swap row & column if table has @TRANSPOSE directive.
+
+const TablePostprocessor := preload("table_postprocessor.gd")
+
 
 var tables := {} # all table data structures w/ postprocessed data, indexed by table_name
 var enumerations := {} # indexed by ALL entity names (which are globally unique)
@@ -53,24 +55,24 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], unit_multi
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
 	
-	# Set TableUtils conversion dictionaries if supplied here.
+	# Set IVTableUtils conversion dictionaries if supplied here.
 	if unit_multipliers:
-		assert(!TableUtils.unit_multipliers or TableUtils.unit_multipliers == unit_multipliers,
-				"A different 'unit_multipliers' was already set in TableUtils")
-		TableUtils.unit_multipliers = unit_multipliers
+		assert(!IVTableUtils.unit_multipliers or IVTableUtils.unit_multipliers == unit_multipliers,
+				"A different 'unit_multipliers' was already set in IVTableUtils")
+		IVTableUtils.unit_multipliers = unit_multipliers
 	if unit_lambdas:
-		assert(!TableUtils.unit_lambdas or TableUtils.unit_lambdas == unit_lambdas,
-				"A different 'unit_lambdas' was already set in TableUtils")
-		TableUtils.unit_lambdas = unit_lambdas
+		assert(!IVTableUtils.unit_lambdas or IVTableUtils.unit_lambdas == unit_lambdas,
+				"A different 'unit_lambdas' was already set in IVTableUtils")
+		IVTableUtils.unit_lambdas = unit_lambdas
 	
 	# Verify conversion dictionaries set, or set to defaults.
-	if !TableUtils.unit_multipliers or !TableUtils.unit_lambdas:
+	if !IVTableUtils.unit_multipliers or !IVTableUtils.unit_lambdas:
 		# table_unit_defaults.gd will unload itself after this; we won't need it anymore
 		var UnitDefaults := preload("table_unit_defaults.gd")
-		if !TableUtils.unit_multipliers:
-			TableUtils.unit_multipliers = UnitDefaults.unit_multipliers
-		if !TableUtils.unit_lambdas:
-			TableUtils.unit_lambdas = UnitDefaults.unit_lambdas
+		if !IVTableUtils.unit_multipliers:
+			IVTableUtils.unit_multipliers = UnitDefaults.unit_multipliers
+		if !IVTableUtils.unit_lambdas:
+			IVTableUtils.unit_lambdas = UnitDefaults.unit_lambdas
 
 	# Postprocess after clearing data (maybe user calls again for some reason?)
 	tables.clear()
