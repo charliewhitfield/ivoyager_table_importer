@@ -20,7 +20,8 @@
 extends Node
 
 # This node is loaded as singleton 'IVTableData' by table_plugin.gd.
-# All user interface is here!
+#
+# All table data interface is here!
 #
 # Data dictionaries are populated only after postprocess_tables() is called.
 # Access data directly in dictionaries or use API.
