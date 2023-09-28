@@ -54,7 +54,7 @@ func _enter_tree():
 	add_custom_type("IVTableResource", "Resource", TableResource, _get_table_resource_icon())
 	_editor_import_plugin = EditorImportPluginClass.new()
 	add_import_plugin(_editor_import_plugin)
-	_add_autoloads.call_deferred()
+	_add_autoloads()
 
 
 func _exit_tree():
