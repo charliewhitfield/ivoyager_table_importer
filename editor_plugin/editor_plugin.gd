@@ -1,4 +1,4 @@
-# table_importer_plugin.gd
+# editor_plugin.gd
 # This file is part of I, Voyager
 # https://ivoyager.dev
 # *****************************************************************************
@@ -20,8 +20,12 @@
 @tool
 extends EditorPlugin
 
-# Adds a custom resource, an EditorImportPlugin, and an autoload singleton.
-# All user interface is through singleton 'IVTableData' (table_data.gd).
+# Adds a custom resource, an EditorImportPlugin, and autoload singletons
+# specified by 'res://addons/ivoyager_table_importer/table_importer.cfg' and/or
+# 'res://ivoyager_override.cfg'.
+#
+# All table data interface is through singleton 'IVTableData'
+# (singletons/table_data.gd).
 #
 # Note: There is talk in Godot issues of depreciating 'add_custom_type()'.
 # We prefer this method over file 'class_name' because it does not involve
@@ -30,10 +34,10 @@ extends EditorPlugin
 # in 4.2-beta builds).
 
 const config_utils := preload("config_utils.gd")
-const TableResourceClass := preload("table_resource.gd")
+const TableResource := preload("table_resource.gd")
 const EditorImportPluginClass := preload("editor_import_plugin.gd")
 
-var _config: ConfigFile # with overrides
+var _config: ConfigFile # base config with overrides
 var _editor_import_plugin: EditorImportPlugin
 var _autoloads := {}
 
@@ -47,7 +51,7 @@ func _enter_tree():
 			"res://ivoyager_override.cfg", "table_importer_")
 	if !_config:
 		return
-	add_custom_type("IVTableResource", "Resource", TableResourceClass, _get_table_resource_icon())
+	add_custom_type("IVTableResource", "Resource", TableResource, _get_table_resource_icon())
 	_editor_import_plugin = EditorImportPluginClass.new()
 	add_import_plugin(_editor_import_plugin)
 	_add_autoloads.call_deferred()
