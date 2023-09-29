@@ -121,10 +121,10 @@ func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 		position = 1
 		enclosure_level = 1
 		while position < length:
-			var char := unit_str[position]
-			if char == "(":
+			var chr := unit_str[position]
+			if chr == "(":
 				enclosure_level += 1
-			elif char == ")":
+			elif chr == ")":
 				enclosure_level -= 1
 				if enclosure_level == 0:
 					if position == length - 1:
@@ -142,12 +142,12 @@ func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 		position = 0
 		enclosure_level = 0
 		while position < length:
-			var char := unit_str[position]
-			if char == "(":
+			var chr := unit_str[position]
+			if chr == "(":
 				enclosure_level += 1
-			elif char == ")":
+			elif chr == ")":
 				enclosure_level -= 1
-			elif char == " " and enclosure_level == 0:
+			elif chr == " " and enclosure_level == 0:
 				return (get_parsed_unit_multiplier(unit_str.left(position), assert_error)
 						* get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
 			position += 1
@@ -157,12 +157,12 @@ func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 		position = 0
 		enclosure_level = 0
 		while position < length:
-			var char := unit_str[position]
-			if char == "(":
+			var chr := unit_str[position]
+			if chr == "(":
 				enclosure_level += 1
-			elif char == ")":
+			elif chr == ")":
 				enclosure_level -= 1
-			elif char == "/" and enclosure_level == 0:
+			elif chr == "/" and enclosure_level == 0:
 				return (get_parsed_unit_multiplier(unit_str.left(position), assert_error)
 						/ get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
 			position += 1
@@ -172,12 +172,12 @@ func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 		position = 0
 		enclosure_level = 0
 		while position < length:
-			var char := unit_str[position]
-			if char == "(":
+			var chr := unit_str[position]
+			if chr == "(":
 				enclosure_level += 1
-			elif char == ")":
+			elif chr == ")":
 				enclosure_level -= 1
-			elif char == "^" and enclosure_level == 0:
+			elif chr == "^" and enclosure_level == 0:
 				return pow(get_parsed_unit_multiplier(unit_str.left(position), assert_error),
 						 get_parsed_unit_multiplier(unit_str.substr(position + 1), assert_error))
 			position += 1
