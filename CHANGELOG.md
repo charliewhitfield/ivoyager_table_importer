@@ -2,6 +2,19 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.0.5] - Not Released
+
+Under development using Godot 4.1.1.
+
+### Added
+
+* Autoload singletons IVQFormat, IVUnits and IVQConvert (the latter two replace static classes).
+* table_importer.cfg
+
+### Changed
+* Editor plugin now uses a config file (with optional project level override config) to define all autoloads. This is mainly so the user can reasign IVUnits.
+* Restructured directories.
+
 ## [v0.0.4] - 2023-09-25
 
 Developed for Godot 4.1.1.
@@ -37,6 +50,7 @@ Developed for Godot 4.1.1.
 Initial alpha release!
 
 
+[v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...HEAD
 [v0.0.4]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.3...v0.0.4
 [v0.0.3]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.1...v0.0.2
