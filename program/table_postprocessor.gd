@@ -40,7 +40,7 @@ enum TableDirectives { # copy from table_resource.gd
 }
 
 
-const TableResource := preload("table_resource.gd")
+const TableResource := preload("../editor_plugin/table_resource.gd")
 
 # TODO: Proper localization. I'm not sure if we're supposed to use get_locale()
 # from OS or TranslationServer, or how to do fallbacks for missing translations.
@@ -149,6 +149,21 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	
 	var msec := Time.get_ticks_msec() - _start_msec
 	print("Processed %s table items in %s msec" % [_count, msec])
+
+
+func c_unescape_patch(text: String) -> String:
+	# Patch method to read '\u' escape; see open Godot issue #38716.
+	# This can read 'small' unicodes up to '\uFFFF'.
+	# Godot doesn't seem to support larger '\Uxxxxxxxx' unicodes as of 4.1.1.
+	var u_esc := text.find("\\u")
+	while u_esc != -1:
+		var esc_str := text.substr(u_esc, 6)
+		var hex_str := esc_str.replace("\\u", "0x")
+		var unicode := hex_str.hex_to_int()
+		var unicode_chr := char(unicode)
+		text = text.replace(esc_str, unicode_chr)
+		u_esc = text.find("\\u")
+	return text
 
 
 func _add_table_enumeration(table_res: TableResource) -> void:
@@ -461,7 +476,7 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		var import_float := import_str.lstrip("~").to_float()
 		if !unit:
 			return import_float
-		return IVTableUtils.convert_quantity(import_float, unit, true, true)
+		return IVQConvert.convert_quantity(import_float, unit, true, true)
 	
 	if type == TYPE_STRING:
 		if import_value == null:
@@ -469,7 +484,7 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
 		var import_str := str_array[import_value]
 		import_str = import_str.c_unescape() # does not process '\uXXXX'
-		import_str = IVTableUtils.c_unescape_patch(import_str)
+		import_str = c_unescape_patch(import_str)
 		return import_str
 	
 	if type == TYPE_STRING_NAME:

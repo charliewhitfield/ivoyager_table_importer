@@ -1,4 +1,4 @@
-# table_unit_defaults.gd
+# units.gd
 # This file is part of I, Voyager
 # https://ivoyager.dev
 # *****************************************************************************
@@ -17,22 +17,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-@static_unload
-extends Object
+extends Node
 
-# This static class defines units and unit name dictionaries for converting
-# table float values to SI base units internally. This is used if the project
-# doesn't supply its own conversion dictionaries.
+# This node is added as singleton 'IVUnits'. You can replace this singleton by
+# creating an override config file in your project directory
+# res://ivoyager_override.cfg (if it doesn't already exist), with these lines:
 #
-# It may be convenient to create a 'class_name Units' object in your project
-# with your own unit constants and 'unit_multipliers' and 'unit_lambdas'
-# dictionaries. This way you can code unit quantities in your files as
-# constants (e.g., 'const SOME_TIME_CONSTANT = 4.0 * Units.DAY'). If you do,
-# be sure to provide your conversion dictionaries in the postprocess_tables()
-# call, or set conversion dictionaries directly in table_utils.gd.
+# [table_importer_autoload]
 #
-# For GUI unit display, feel free to use our open-source IVQFormat:
-# https://github.com/ivoyager/ivoyager/blob/master/static/qformat.gd
+# IVUnits="your_replacement_path"
+#
+#
+# You can add to dictionaries 'unit_multipliers' & 'unit_lambdas' here.
+# However, if you need different base units or derived unit constants, we
+# suggest you replace this singleton as outlined above.
+
 
 # SI base units
 const SECOND := 1.0
@@ -78,15 +77,16 @@ const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER * METER * METER / (KG * SECO
 # Unit symbols below mostly follow:
 # https://en.wikipedia.org/wiki/International_System_of_Units
 #
-# If you want something different, you can make your own conversion dicts!
+# IVConvert.convert_quantity() can convert compound units such as 'm/s^2'.
+# However, dictionary lookup is faster so consider adding commonly used
+# compound units as keys in unit_multipliers. 
 #
-# See 'convert_quantity()' in table_utils.gd. It will first look for a unit
-# symbol in 'unit_multipliers', then in 'unit_lambdas', then attempt to parse
-# a compound unit string. Compound units can be added to dictionary for quick
-# lookup rather than slow parsing.
+# We look for unit symbol first in unit_multipliers and then in unit_lambdas.
 
-static var unit_multipliers := {
-	# Duplicated symbols have leading underscore.
+var unit_multipliers := {
+	# Duplicated symbols have leading underscore(s).
+	# See IVQuantityFormater for unit display strings.
+	
 	# time
 	&"s" : SECOND,
 	&"min" : MINUTE,
@@ -176,6 +176,12 @@ static var unit_multipliers := {
 	&"Wb" : WEBER,
 	# magnetic flux density
 	&"T" : TESLA,
+	# GM
+	&"km^3/s^2" : STANDARD_GM,
+	&"m^3/s^2" : METER * METER * METER / (SECOND * SECOND),
+	# gravitational constant
+	&"m^3/(kg s^2)" : METER * METER * METER / (KG * SECOND * SECOND),
+	&"km^3/(kg s^2)" : KM * KM * KM / (KG * SECOND * SECOND),
 	# information
 	&"bit" : 1.0,
 	&"B" : 8.0,
@@ -197,18 +203,14 @@ static var unit_multipliers := {
 	&"MiB" : 8.0 * 1024.0 ** 2,
 	&"GiB" : 8.0 * 1024.0 ** 3,
 	&"TiB" : 8.0 * 1024.0 ** 4,
+	# misc
+	&"deg/Cy^2" : DEG / (CENTURY * CENTURY),
 }
 
-static var unit_lambdas := { # can't make const!
+var unit_lambdas := {
 	&"degC" : func convert_centigrade(x: float, to_internal := true) -> float:
-		if to_internal:
-			return (x + 273.15) * KELVIN
-		else:
-			return x / KELVIN - 273.15,
+		return x + 273.15 if to_internal else x - 273.15,
 	&"degF" : func convert_fahrenheit(x: float, to_internal := true) -> float:
-		if to_internal:
-			return (x + 459.67) / 1.8 * KELVIN
-		else:
-			return x / KELVIN * 1.8 - 459.67,
+		return  (x + 459.67) / 1.8 if to_internal else x * 1.8 - 459.67,
 }
 

@@ -1,4 +1,4 @@
-# table_utils.gd
+# qconvert.gd
 # This file is part of I, Voyager
 # https://ivoyager.dev
 # *****************************************************************************
@@ -17,27 +17,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
-class_name IVTableUtils
-extends Object
+extends Node
 
-# User can supply 'unit_multipliers' and 'unit_lambdas' when calling
-# TableData.postprocess_tables(), or set directly here before that.
-# If not set at or before postprocess_tables(), they will be set to the
-# default conversion dictionaries defined in table_unit_defaults.gd.
+# This node is added as singleton "IVQConvert".
+#
+# Converts float quantities to or from internal units.
 
 const DPRINT := false
 
-static var unit_multipliers: Dictionary
-static var unit_lambdas: Dictionary
+var unit_multipliers: Dictionary = IVUnits.unit_multipliers
+var unit_lambdas: Dictionary = IVUnits.unit_lambdas
 
 
 
-static func is_valid_unit(unit: StringName, parse_compound_unit := false) -> bool:
+func is_valid_unit(unit: StringName, parse_compound_unit := false) -> bool:
 	# Tests whether 'unit' string is valid for convert_quantity().
 	return !is_nan(convert_quantity(1.0, unit, true, parse_compound_unit, false))
 
 
-static func convert_quantity(x: float, unit: StringName, to_internal := true,
+func convert_quantity(x: float, unit: StringName, to_internal := true,
 		parse_compound_unit := true, assert_error := true) -> float:
 	# Converts 'x' in specified 'unit' to internal float value, or from
 	# internal value if to_internal == false. Will attempt to parse the 'unit'
@@ -46,8 +44,8 @@ static func convert_quantity(x: float, unit: StringName, to_internal := true,
 	# if assert_error == false.
 	#
 	# If 'unit' is in 'unit_multipliers' or 'unit_lambdas', then no parsing is
-	# attempted. The dictionaries can have compound units like 'm/s^2' for
-	# quicker lookup without parsing.
+	# attempted. Dictionary 'unit_multipliers' can have compound units like
+	# 'm/s^2' for quick lookup without parsing.
 	#
 	# See parsing comments in get_parsed_unit_multiplier().
 	if !unit:
@@ -70,7 +68,7 @@ static func convert_quantity(x: float, unit: StringName, to_internal := true,
 	return x * multiplier if to_internal else x / multiplier
 
 
-static func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
+func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 	# Parsing isn't super fast. To optimize, add commonly used compound units
 	# to your 'unit_multipliers' dictionary.
 	#
@@ -103,8 +101,8 @@ static func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> 
 		print(unit_str)
 	
 	if !unit_str:
-		assert(!assert_error, "Empty unit string or substring."
-				+ " Could be a disallowed space that is not a multiplication operator.")
+		assert(!assert_error, "Empty unit string or substring. This could be caused by a"
+				+ " disallowed space that is not a multiplication operator.")
 		return NAN
 	
 	var multiplier: float = unit_multipliers.get(unit_str, 0.0)
@@ -186,19 +184,4 @@ static func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> 
 	
 	assert(!assert_error, "Could not parse unit string or substring '%s'" % unit_str)
 	return NAN
-
-
-static func c_unescape_patch(text: String) -> String:
-	# Patch method to read '\u' escape; see open Godot issue #38716.
-	# This can read 'small' unicodes up to '\uFFFF'.
-	# Godot doesn't seem to support larger '\Uxxxxxxxx' unicodes as of 4.1.1.
-	var u_esc := text.find("\\u")
-	while u_esc != -1:
-		var esc_str := text.substr(u_esc, 6)
-		var hex_str := esc_str.replace("\\u", "0x")
-		var unicode := hex_str.hex_to_int()
-		var unicode_chr := char(unicode)
-		text = text.replace(esc_str, unicode_chr)
-		u_esc = text.find("\\u")
-	return text
 
