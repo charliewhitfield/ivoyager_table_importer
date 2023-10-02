@@ -44,7 +44,7 @@ var _autoloads := {}
 
 
 func _enter_tree():
-	plugin_utils.print_name_and_version("res://addons/ivoyager_table_importer/plugin.cfg",
+	plugin_utils.print_plugin_name_and_version("res://addons/ivoyager_table_importer/plugin.cfg",
 			" - https://ivoyager.dev")
 	_config = plugin_utils.get_config_with_override(
 			"res://addons/ivoyager_table_importer/table_importer.cfg",
