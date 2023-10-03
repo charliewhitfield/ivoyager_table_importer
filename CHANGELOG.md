@@ -2,9 +2,9 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v0.0.5] - Not Released
+## [v0.0.5] - 2023-10-03
 
-Under development using Godot 4.1.1.
+Developed for Godot 4.1.1.
 
 ### Added
 
@@ -50,7 +50,7 @@ Developed for Godot 4.1.1.
 Initial alpha release!
 
 
-[v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...HEAD
+[v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...v0.0.5
 [v0.0.4]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.3...v0.0.4
 [v0.0.3]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.1...v0.0.2
