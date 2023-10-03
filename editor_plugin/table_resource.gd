@@ -201,31 +201,31 @@ func import_file(file: FileAccess, source_path: String) -> void:
 		TableDirectives.DB_ENTITIES:
 			if VERBOSE:
 				print("Importing DB_ENTITIES " + path)
-			_preprocess_db_style(cells, false, false, false, true)
+			_preprocess_db_style(cells, false, false, true)
 		TableDirectives.DB_ENTITIES_MOD:
 			if VERBOSE:
 				print("Importing DB_ENTITIES_MOD " + path)
-			_preprocess_db_style(cells, true, false, false, true)
+			_preprocess_db_style(cells, false, false, true)
 		TableDirectives.DB_ANONYMOUS_ROWS:
 			if VERBOSE:
 				print("Importing DB_ANONYMOUS_ROWS " + path)
-			_preprocess_db_style(cells, false, false, false, false)
+			_preprocess_db_style(cells, false, false, false)
 		TableDirectives.ENUMERATION:
 			if VERBOSE:
 				print("Importing ENUMERATION " + path)
-			_preprocess_db_style(cells, false, true, false, true)
+			_preprocess_db_style(cells, true, false, true)
 		TableDirectives.WIKI_LOOKUP:
 			if VERBOSE:
 				print("Importing WIKI_LOOKUP " + path)
-			_preprocess_db_style(cells, false, false, true, true)
+			_preprocess_db_style(cells, false, true, true)
 		TableDirectives.ENUM_X_ENUM:
 			if VERBOSE:
 				print("Importing ENUM_X_ENUM " + path)
 			_preprocess_enum_x_enum(cells)
 
 
-func _preprocess_db_style(cells: Array[Array], is_mod: bool, is_enumeration: bool,
-		is_wiki_lookup: bool, has_row_names: bool) -> void:
+func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_lookup: bool,
+		has_row_names: bool) -> void:
 	
 	# specific directives
 	var modifies_pos := specific_directives.find(TableDirectives.MODIFIES)

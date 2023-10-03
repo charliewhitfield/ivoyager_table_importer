@@ -33,7 +33,7 @@ extends EditorPlugin
 # to update changes outside of editor; we'll open an issue if this isn't fixed
 # in 4.2-beta builds).
 
-const config_utils := preload("config_utils.gd")
+const plugin_utils := preload("plugin_utils.gd")
 const TableResource := preload("table_resource.gd")
 const EditorImportPluginClass := preload("editor_import_plugin.gd")
 
@@ -44,9 +44,9 @@ var _autoloads := {}
 
 
 func _enter_tree():
-	config_utils.print_plugin_with_version("res://addons/ivoyager_table_importer/plugin.cfg",
+	plugin_utils.print_plugin_name_and_version("res://addons/ivoyager_table_importer/plugin.cfg",
 			" - https://ivoyager.dev")
-	_config = config_utils.get_config_with_override(
+	_config = plugin_utils.get_config_with_override(
 			"res://addons/ivoyager_table_importer/table_importer.cfg",
 			"res://ivoyager_override.cfg", "table_importer_")
 	if !_config:

@@ -150,7 +150,8 @@ func get_db_field_array(table: StringName, field: StringName) -> Array:
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return []
-	return table_dict[field].duplicate()
+	var field_array: Array = table_dict[field]
+	return field_array.duplicate()
 
 
 func count_db_matching(table: StringName, field: StringName, match_value: Variant) -> int:
@@ -224,6 +225,7 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 	if type == TYPE_STRING_NAME:
 		return value != &""
 	if type == TYPE_ARRAY:
+		@warning_ignore("unsafe_method_access")
 		return !value.is_empty()
 	return true # BOOL
 
