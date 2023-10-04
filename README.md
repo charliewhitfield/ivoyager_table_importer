@@ -4,12 +4,14 @@ TL;DR: This Godot Editor plugin imports tables like [this](https://github.com/iv
 
 ## Installation
 
+Find more detailed instructions at our [Developers Page](https://www.ivoyager.dev/developers/).
+
 The plugin directory `ivoyager_table_importer` should be added _directly to your addons directory_*. You can do this one of two ways:
 
 1. Download and extract the plugin, then add it (in its entirety) to your addons directory, creating an 'addons' directory in your project if needed.
-2. Add as a git submodule. From your project directory, use git command:  
+2. (Recommended) Add as a git submodule. From your project directory, use git command:  
     `git submodule add https://github.com/ivoyager/ivoyager_table_importer addons/ivoyager_table_importer`  
-    This method will allow you to version-control the plugin from within your project rather than moving directories manually. You'll be able to checkout any plugin commit or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
+    This method will allow you to version-control the plugin from within your project rather than moving directories manually. You'll be able to pull updates, checkout any commit, or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
 
 (*Note: This differs from Godot's recomended plugin distribution from inside an empty project, but allows us to version-control our plugins without manual directory operations.)
 
