@@ -2,9 +2,21 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.0.6] - 2023-10-05
+
+Developed using Godot 4.1.2.
+
+### Added
+
+* Translation file for large number and unit names in IVQFormat.
+
+### Changed
+
+* Removed dictionary keys for some peculiar compound units used in astronomy. (The parser can still process these.)
+
 ## [v0.0.5] - 2023-10-03
 
-Developed for Godot 4.1.1.
+Developed using Godot 4.1.1.
 
 ### Added
 
@@ -17,7 +29,7 @@ Developed for Godot 4.1.1.
 
 ## [v0.0.4] - 2023-09-25
 
-Developed for Godot 4.1.1.
+Developed using Godot 4.1.1.
 
 ### Added
 * A compound unit string parser! It can parse compound units like 'm^3/(kg s^2)'.
@@ -29,7 +41,7 @@ Developed for Godot 4.1.1.
 
 ## [v0.0.3] - 2023-09-06
 
-Developed for Godot 4.1.1.
+Developed using Godot 4.1.1.
 
 ### Changed
 * Removed @tool from files that are not part of the resource import.
@@ -37,7 +49,7 @@ Developed for Godot 4.1.1.
 
 ## [v0.0.2] - 2023-09-05
 
-Developed for Godot 4.1.1.
+Developed using Godot 4.1.1.
 
 ### Changed
 * Improved table asserts with row, column and/or field position
@@ -45,11 +57,12 @@ Developed for Godot 4.1.1.
 
 ## v0.0.1 - 2023-09-04
 
-Developed for Godot 4.1.1.
+Developed using Godot 4.1.1.
 
 Initial alpha release!
 
 
+[v0.0.6]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...v0.0.5
 [v0.0.4]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.3...v0.0.4
 [v0.0.3]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.2...v0.0.3
