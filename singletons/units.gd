@@ -55,13 +55,13 @@ const AU := 149597870700.0 * METER
 const PARSEC := 648000.0 * AU / PI
 const SPEED_OF_LIGHT := 299792458.0 * METER / SECOND
 const LIGHT_YEAR := SPEED_OF_LIGHT * YEAR
-const STANDARD_GRAVITY := 9.80665 * METER / (SECOND * SECOND)
+const STANDARD_GRAVITY := 9.80665 * METER / SECOND ** 2
 const GRAM := 1e-3 * KG
 const TONNE := 1e3 * KG
-const HECTARE := 1e4 * METER * METER
-const LITER := 1e-3 * METER * METER * METER
-const NEWTON := KG * METER / (SECOND * SECOND)
-const PASCAL := NEWTON / (METER * METER)
+const HECTARE := 1e4 * METER ** 2
+const LITER := 1e-3 * METER ** 3
+const NEWTON := KG * METER / SECOND ** 2
+const PASCAL := NEWTON / METER ** 2
 const BAR := 1e5 * PASCAL
 const ATM := 101325.0 * PASCAL
 const JOULE := NEWTON * METER
@@ -70,9 +70,8 @@ const WATT := NEWTON / SECOND
 const VOLT := WATT / AMPERE
 const COULOMB := SECOND * AMPERE
 const WEBER := VOLT * SECOND
-const TESLA := WEBER / (METER * METER)
-const STANDARD_GM := KM * KM * KM / (SECOND * SECOND) # usually in these units
-const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER * METER * METER / (KG * SECOND * SECOND)
+const TESLA := WEBER / METER ** 2
+const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER ** 3 / (KG * SECOND ** 2)
 
 # Unit symbols below mostly follow:
 # https://en.wikipedia.org/wiki/International_System_of_Units
@@ -84,8 +83,8 @@ const GRAVITATIONAL_CONSTANT := 6.67430e-11 * METER * METER * METER / (KG * SECO
 # We look for unit symbol first in unit_multipliers and then in unit_lambdas.
 
 var unit_multipliers := {
-	# Duplicated symbols have leading underscore(s).
-	# See IVQuantityFormater for unit display strings.
+	# Duplicated symbols have leading underscore.
+	# See IVQFormat for unit display strings.
 	
 	# time
 	&"s" : SECOND,
@@ -119,29 +118,29 @@ var unit_multipliers := {
 	&"Hz" : 1.0 / SECOND,
 	&"1/Cy" : 1.0 / CENTURY,
 	# area
-	&"m^2" : METER * METER,
-	&"km^2" : KM * KM,
+	&"m^2" : METER ** 2,
+	&"km^2" : KM ** 2,
 	&"ha" : HECTARE,
 	# volume
 	&"l" : LITER,
 	&"L" : LITER,
-	&"m^3" : METER * METER * METER,
+	&"m^3" : METER ** 3,
 	# velocity
 	&"m/s" : METER / SECOND,
 	&"km/s" : KM / SECOND,
 	&"au/Cy" : AU / CENTURY,
 	&"c" : SPEED_OF_LIGHT,
 	# acceleration/gravity
-	&"m/s^2" : METER / (SECOND * SECOND),
+	&"m/s^2" : METER / SECOND ** 2,
 	&"_g" : STANDARD_GRAVITY,
 	# angular velocity
 	&"rad/s" : 1.0 / SECOND, 
 	&"deg/d" : DEG / DAY,
 	&"deg/Cy" : DEG / CENTURY,
 	# particle density
-	&"m^-3" : 1.0 / (METER * METER * METER),
+	&"m^-3" : 1.0 / METER ** 3,
 	# density
-	&"g/cm^3" : GRAM / (CM * CM * CM),
+	&"g/cm^3" : GRAM / CM ** 3,
 	# force
 	&"N" : NEWTON,
 	# pressure
@@ -167,7 +166,7 @@ var unit_multipliers := {
 	&"cd" : CANDELA,
 	&"lm" : CANDELA, # 1 lm = 1 cd·sr, but sr is dimensionless
 	# luminance
-	&"cd/m^2" : CANDELA / (METER * METER),
+	&"cd/m^2" : CANDELA / METER ** 2,
 	# electric potential
 	&"V" : VOLT,
 	# electric charge
@@ -176,12 +175,6 @@ var unit_multipliers := {
 	&"Wb" : WEBER,
 	# magnetic flux density
 	&"T" : TESLA,
-	# GM
-	&"km^3/s^2" : STANDARD_GM,
-	&"m^3/s^2" : METER * METER * METER / (SECOND * SECOND),
-	# gravitational constant
-	&"m^3/(kg s^2)" : METER * METER * METER / (KG * SECOND * SECOND),
-	&"km^3/(kg s^2)" : KM * KM * KM / (KG * SECOND * SECOND),
 	# information
 	&"bit" : 1.0,
 	&"B" : 8.0,
@@ -203,12 +196,10 @@ var unit_multipliers := {
 	&"MiB" : 8.0 * 1024.0 ** 2,
 	&"GiB" : 8.0 * 1024.0 ** 3,
 	&"TiB" : 8.0 * 1024.0 ** 4,
-	# misc
-	&"deg/Cy^2" : DEG / (CENTURY * CENTURY),
 }
 
 var unit_lambdas := {
-	&"degC" : func convert_centigrade(x: float, to_internal := true) -> float:
+	&"degC" : func convert_celsius(x: float, to_internal := true) -> float:
 		return x + 273.15 if to_internal else x - 273.15,
 	&"degF" : func convert_fahrenheit(x: float, to_internal := true) -> float:
 		return  (x + 459.67) / 1.8 if to_internal else x * 1.8 - 459.67,
