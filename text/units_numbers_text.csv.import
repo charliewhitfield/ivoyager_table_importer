@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c66v31s4pfbfb"
+
+[deps]
+
+files=["res://addons/ivoyager_table_importer/text/units_numbers_text.en.translation"]
+
+source_file="res://addons/ivoyager_table_importer/text/units_numbers_text.csv"
+dest_files=["res://addons/ivoyager_table_importer/text/units_numbers_text.en.translation"]
+
+[params]
+
+compress=true
+delimiter=0

@@ -22,6 +22,9 @@ extends Node
 # This node is added as singleton "IVQFormat". 
 #
 # Provides functions for formatting numbers or unit quantities.
+#
+# If using named numbers or 'long_form' units, you'll need to add localized
+# text/unit_numbers_text.en.translation to your Project.
 
 
 enum TextFormat {
@@ -87,7 +90,7 @@ var prefix_symbols: Array[String] = [ # e-30, ..., e30
 var prefix_offset := prefix_symbols.find("") # UPDATE if prefix_symbols changed!
 
 
-var large_numbers: Array[StringName] = [
+var large_number_names: Array[StringName] = [
 	&"TXT_MILLION", &"TXT_BILLION", &"TXT_TRILLION", &"TXT_QUADRILLION", &"TXT_QUINTILLION",
 	&"TXT_SEXTILLION", &"TXT_SEPTILLION", &"TXT_OCTILLION", &"TXT_NONILLION", &"TXT_DECILLION"
 ] # e6, ..., e33
@@ -128,8 +131,8 @@ var long_forms := {
 	&"deg" : &"TXT_DEGREES",
 	# temperature
 	&"K" : &"TXT_KELVIN",
-	&"degC" : &"TXT_CENTIGRADE",
-	&"degF" : &"TXT_FAHRENHEIT",
+	&"degC" : &"TXT_DEGREES_CELSIUS",
+	&"degF" : &"TXT_DEGREES_FAHRENHEIT",
 	# frequency
 	&"Hz" : &"TXT_HERTZ",
 	&"d^-1" : &"TXT_PER_DAY",
@@ -197,20 +200,18 @@ var long_forms := {
 var short_forms := {
 	# If missing here, we fallback to the unit StringName itself (that's
 	# usually what we want: 'km', 'km/s', etc.).
-	&"deg" : &"TXT_DEG",
-	&"degC" : &"TXT_DEG_C",
-	&"degF" : &"TXT_DEG_F",
-	&"deg/d" : &"TXT_DEG_PER_DAY",
-	&"deg/a" : &"TXT_DEG_PER_YEAR",
-	&"deg/Cy" : &"TXT_DEG_PER_CENTURY",
-	&"_g" : &"g", # reused symbol ('_g' is the unit name; 'g' is GUI display)
+	&"deg" : "\u00B0",
+	&"degC" : "\u00B0C",
+	&"degF" : "\u00B0F",
+	&"deg/d" : "\u00B0/d",
+	&"deg/a" : "\u00B0/a",
+	&"deg/Cy" : "\u00B0/Cy",
+	&"_g" : "g", # reused symbol ('_g' is the unit name; 'g' is GUI display)
 }
 
 var skip_space := {
 	# No space before short_forms or StringName (e.g., degrees symbol).
 	&"deg" : true,
-	&"degC" : true,
-	&"degF" : true,
 	&"deg/d" : true,
 	&"deg/a" : true,
 	&"deg/Cy" : true,
@@ -352,11 +353,11 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	var lg_num_index := exp_3s_index - 2
 	if lg_num_index < 0: # shouldn't happen but just in case
 		return "%.f" % x
-	if lg_num_index >= large_numbers.size():
-		lg_num_index = large_numbers.size() - 1
+	if lg_num_index >= large_number_names.size():
+		lg_num_index = large_number_names.size() - 1
 		exp_3s_index = lg_num_index + 2
 	x /= pow(10.0, exp_3s_index * 3)
-	var lg_number_str: String = tr(large_numbers[lg_num_index])
+	var lg_number_str: String = tr(large_number_names[lg_num_index])
 	match text_format:
 		TextFormat.SHORT_UPPER_CASE, TextFormat.LONG_UPPER_CASE:
 			lg_number_str = lg_number_str.to_upper()
@@ -392,7 +393,7 @@ func fixed_unit(x: float, unit: StringName, precision := 3,
 	
 	if !unit_str:
 		is_space = !skip_space.has(unit)
-		unit_str = tr(short_forms[unit]) if short_forms.has(unit) else String(unit)
+		unit_str = short_forms[unit] if short_forms.has(unit) else String(unit)
 	
 	if is_space:
 		return number_str + " " + unit_str
@@ -443,7 +444,7 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 		is_space = !skip_space.has(unit)
 		var prefix_symbol: String = prefix_symbols[si_index]
 		if short_forms.has(unit):
-			unit_str = prefix_symbol + tr(short_forms[unit])
+			unit_str = prefix_symbol + short_forms[unit]
 		else:
 			unit_str = prefix_symbol + String(unit)
 
