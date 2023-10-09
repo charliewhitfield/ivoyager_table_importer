@@ -154,6 +154,17 @@ func get_db_field_array(table: StringName, field: StringName) -> Array:
 	return field_array.duplicate()
 
 
+func db_find(table: StringName, field: StringName, value: Variant) -> int:
+	# Returns row number of value in field.
+	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
+	var table_dict: Dictionary = tables[table]
+	if !table_dict.has(field):
+		return -1
+	var field_array: Array = table_dict[field]
+	return field_array.find(value)
+
+
 func count_db_matching(table: StringName, field: StringName, match_value: Variant) -> int:
 	# Returns -1 if field not found.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
