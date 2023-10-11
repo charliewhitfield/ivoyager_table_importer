@@ -228,7 +228,8 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 	var value: Variant = table_dict[field][row]
 	var type := typeof(value)
 	if type == TYPE_FLOAT:
-		return !is_nan(value)
+		var float_value: float = value
+		return !is_nan(float_value)
 	if type == TYPE_INT:
 		return value != -1
 	if type == TYPE_STRING:
@@ -252,7 +253,8 @@ func db_has_float_value(table: StringName, field: StringName, row := -1, entity 
 	if entity:
 		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
-	return !is_nan(table_dict[field][row])
+	var float_value: float = table_dict[field][row]
+	return !is_nan(float_value)
 
 
 func get_db_string(table: StringName, field: StringName, row := -1, entity := &"") -> String:
@@ -427,7 +429,7 @@ func db_build_dictionary_from_keys(dict: Dictionary, table: StringName, row: int
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
-	for field in dict:
+	for field: StringName in dict:
 		if db_has_value(table, field, row):
 			dict[field] = table_dict[field][row]
 
@@ -453,7 +455,7 @@ func db_build_object_all_fields(object: Object, table: StringName, row: int) -> 
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
-	for field in tables[table]:
+	for field: StringName in tables[table]:
 		if db_has_value(table, field, row):
 			object.set(field, table_dict[field][row])
 

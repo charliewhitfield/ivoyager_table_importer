@@ -313,6 +313,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 		
 	var abs_x := absf(x)
 	var pow10 := floorf(log(abs_x) / LOG_OF_10)
+	var divisor: float
 	
 	if number_type == NumberType.PRECISION:
 		var decimal_pl := precision - int(pow10) - 1
@@ -321,7 +322,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 		if decimal_pl == 0:
 			return "%.f" % x # whole number, '555'
 		else: # remove over-precision
-			var divisor := pow(10.0, -decimal_pl)
+			divisor = pow(10.0, -decimal_pl)
 			x = round(x / divisor)
 			return str(x * divisor) # '555000'
 	
@@ -334,7 +335,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 			return "%.f" % x # whole number, allow over-precision
 	
 	# scientific
-	var divisor := pow(10.0, pow10)
+	divisor = pow(10.0, pow10)
 	x = x / divisor if !is_zero_approx(divisor) else 1.0
 	var exp_precision := pow(10.0, precision - 1)
 	var precision_rounded := roundf(x * exp_precision) / exp_precision
@@ -349,7 +350,7 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	# Returns integer string up to '999999', then '1.00 Million', etc.
 	if abs(x) < 1e6:
 		return "%.f" % x
-	var exp_3s_index := int(floor(log(abs(x)) / (LOG_OF_10 * 3.0)))
+	var exp_3s_index := floori(log(absf(x)) / (LOG_OF_10 * 3.0))
 	var lg_num_index := exp_3s_index - 2
 	if lg_num_index < 0: # shouldn't happen but just in case
 		return "%.f" % x
@@ -384,8 +385,9 @@ func fixed_unit(x: float, unit: StringName, precision := 3,
 	
 	match text_format:
 		TextFormat.LONG_MIXED_CASE, TextFormat.LONG_UPPER_CASE, TextFormat.LONG_LOWER_CASE:
-			if long_forms.has(unit):
-				unit_str = tr(long_forms[unit])
+			var long_form: StringName = long_forms.get(unit, &"")
+			if long_form:
+				unit_str = tr(long_form)
 				if text_format == TextFormat.LONG_UPPER_CASE:
 					unit_str = unit_str.to_upper()
 				elif text_format == TextFormat.LONG_LOWER_CASE:
@@ -413,7 +415,7 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 		x = IVQConvert.convert_quantity(x, unit, false, false)
 	var exp_3s_index := 0
 	if x != 0.0:
-		exp_3s_index = int(floor(log(abs(x)) / (LOG_OF_10 * 3.0)))
+		exp_3s_index = floori(log(absf(x)) / (LOG_OF_10 * 3.0))
 	var si_index := exp_3s_index + prefix_offset
 	if si_index < 0:
 		si_index = 0
@@ -429,9 +431,10 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 	
 	match text_format:
 		TextFormat.LONG_MIXED_CASE, TextFormat.LONG_UPPER_CASE, TextFormat.LONG_LOWER_CASE:
-			if long_forms.has(unit):
+			var long_form: StringName = long_forms.get(unit, &"")
+			if long_form:
+				unit_str = tr(long_form)
 				var prefix_name: String = prefix_names[si_index]
-				unit_str = tr(long_forms[unit])
 				if text_format == TextFormat.LONG_MIXED_CASE:
 					if prefix_name != "":
 						unit_str = prefix_name + unit_str.to_lower()
