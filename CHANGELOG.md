@@ -2,18 +2,6 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v0.0.6] - 2023-10-05
-
-Developed using Godot 4.1.2.
-
-### Added
-
-* Translation file for large number and unit names in IVQFormat.
-
-### Changed
-
-* Removed dictionary keys for some peculiar compound units used in astronomy. (The parser can still process these.)
-
 ## [v0.0.7] - Not Released
 
 Under development using Godot 4.2.dev6 (backward breaking changes!)
@@ -25,8 +13,11 @@ Under development using Godot 4.2.dev6 (backward breaking changes!)
 
 Developed using Godot 4.1.1.
 
+### Changed
+* Removed dictionary keys for some peculiar compound units used in astronomy. (The parser can still process these.)
+
 ### Fixed
-* Added text translation file for large numbers and long-form units.
+* Added missing text translation file for large numbers and long-form units.
 
 ## [v0.0.5] - 2023-10-03
 
