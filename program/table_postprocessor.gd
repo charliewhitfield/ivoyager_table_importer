@@ -262,7 +262,8 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 			var precisions_field := Array([], TYPE_INT, &"", null)
 			precisions_field.resize(n_rows)
 			for row in n_rows:
-				precisions_field[row] = _get_float_str_precision(import_field[row])
+				var float_string: String = import_field[row]
+				precisions_field[row] = _get_float_str_precision(float_string)
 			_precisions[table_name][field] = precisions_field
 	
 	_tables[table_name] = table_dict
@@ -460,7 +461,8 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		if import_value == null:
 			return false
 		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
-		return bool(import_value) # 0 or 1
+		var import_int: int = import_value
+		return bool(import_int) # 0 or 1
 	
 	if type == TYPE_FLOAT:
 		if import_value == null:

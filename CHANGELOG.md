@@ -14,6 +14,20 @@ Developed using Godot 4.1.2.
 
 * Removed dictionary keys for some peculiar compound units used in astronomy. (The parser can still process these.)
 
+## [v0.0.7] - Not Released
+
+Under development using Godot 4.2.dev6 (backward breaking changes!)
+
+### Changed
+* For loop typing and error fixes for Godot 4.2.
+
+## [v0.0.6] - 2023-10-05
+
+Developed using Godot 4.1.1.
+
+### Fixed
+* Added text translation file for large numbers and long-form units.
+
 ## [v0.0.5] - 2023-10-03
 
 Developed using Godot 4.1.1.
@@ -62,6 +76,7 @@ Developed using Godot 4.1.1.
 Initial alpha release!
 
 
+[v0.0.7]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.6...HEAD
 [v0.0.6]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...v0.0.5
 [v0.0.4]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.3...v0.0.4
