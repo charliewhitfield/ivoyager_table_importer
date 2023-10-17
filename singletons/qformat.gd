@@ -225,71 +225,71 @@ func dynamic_unit(x: float, dynamic_unit_type: DynamicUnitType, precision := 3,
 	match dynamic_unit_type:
 		DynamicUnitType.LENGTH_M_KM: # m if x < 1.0 km
 			if x < IVUnits.KM:
-				return fixed_unit(x, "m", precision, number_type, text_format)
-			return fixed_unit(x, "km", precision, number_type, text_format)
+				return fixed_unit(x, &"m", precision, number_type, text_format)
+			return fixed_unit(x, &"km", precision, number_type, text_format)
 		DynamicUnitType.LENGTH_KM_AU: # au if x > 0.1 au
 			if x < 0.1 * IVUnits.AU:
-				return fixed_unit(x, "km", precision, number_type, text_format)
-			return fixed_unit(x, "au", precision, number_type, text_format)
+				return fixed_unit(x, &"km", precision, number_type, text_format)
+			return fixed_unit(x, &"au", precision, number_type, text_format)
 		DynamicUnitType.LENGTH_M_KM_AU:
 			if x < IVUnits.KM:
-				return fixed_unit(x, "m", precision, number_type, text_format)
+				return fixed_unit(x, &"m", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.AU:
-				return fixed_unit(x, "km", precision, number_type, text_format)
-			return fixed_unit(x, "au", precision, number_type, text_format)
+				return fixed_unit(x, &"km", precision, number_type, text_format)
+			return fixed_unit(x, &"au", precision, number_type, text_format)
 		DynamicUnitType.LENGTH_M_KM_AU_LY:
 			if x < IVUnits.KM:
-				return fixed_unit(x, "m", precision, number_type, text_format)
+				return fixed_unit(x, &"m", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.AU:
-				return fixed_unit(x, "km", precision, number_type, text_format)
+				return fixed_unit(x, &"km", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.LIGHT_YEAR:
-				return fixed_unit(x, "au", precision, number_type, text_format)
-			return fixed_unit(x, "ly", precision, number_type, text_format)
+				return fixed_unit(x, &"au", precision, number_type, text_format)
+			return fixed_unit(x, &"ly", precision, number_type, text_format)
 		DynamicUnitType.LENGTH_M_KM_AU_PREFIXED_PARSEC:
 			if x < IVUnits.KM:
-				return fixed_unit(x, "m", precision, number_type, text_format)
+				return fixed_unit(x, &"m", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.AU:
-				return fixed_unit(x, "km", precision, number_type, text_format)
+				return fixed_unit(x, &"km", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.PARSEC:
-				return fixed_unit(x, "au", precision, number_type, text_format)
-			return prefixed_unit(x, "pc", precision, number_type, text_format)
+				return fixed_unit(x, &"au", precision, number_type, text_format)
+			return prefixed_unit(x, &"pc", precision, number_type, text_format)
 		DynamicUnitType.MASS_G_KG: # g if < 1.0 kg
 			if x < IVUnits.KG:
-				return fixed_unit(x, "g", precision, number_type, text_format)
-			return fixed_unit(x, "kg", precision, number_type, text_format)
+				return fixed_unit(x, &"g", precision, number_type, text_format)
+			return fixed_unit(x, &"kg", precision, number_type, text_format)
 		DynamicUnitType.MASS_G_KG_T: # g if < 1.0 kg; t if x >= 1000.0 kg 
 			if x < IVUnits.KG:
-				return fixed_unit(x, "g", precision, number_type, text_format)
+				return fixed_unit(x, &"g", precision, number_type, text_format)
 			elif x < IVUnits.TONNE:
-				return fixed_unit(x, "kg", precision, number_type, text_format)
-			return fixed_unit(x, "t", precision, number_type, text_format)
+				return fixed_unit(x, &"kg", precision, number_type, text_format)
+			return fixed_unit(x, &"t", precision, number_type, text_format)
 		DynamicUnitType.MASS_G_KG_PREFIXED_T: # g, kg, t, kt, Mt, Gt, Tt, etc.
 			if x < IVUnits.KG:
-				return fixed_unit(x, "g", precision, number_type, text_format)
+				return fixed_unit(x, &"g", precision, number_type, text_format)
 			elif x < IVUnits.TONNE:
-				return fixed_unit(x, "kg", precision, number_type, text_format)
-			return prefixed_unit(x, "t", precision, number_type, text_format)
+				return fixed_unit(x, &"kg", precision, number_type, text_format)
+			return prefixed_unit(x, &"t", precision, number_type, text_format)
 		DynamicUnitType.MASS_RATE_G_KG_PREFIXED_T_PER_D: # g/d, kg/d, t/d, kt/d, Mt/d, Gt/d, etc.
 			if x < IVUnits.KG / IVUnits.DAY:
-				return fixed_unit(x, "g/d", precision, number_type, text_format)
+				return fixed_unit(x, &"g/d", precision, number_type, text_format)
 			elif x < IVUnits.TONNE / IVUnits.DAY:
-				return fixed_unit(x, "kg/d", precision, number_type, text_format)
-			return prefixed_unit(x, "t/d", precision, number_type, text_format)
+				return fixed_unit(x, &"kg/d", precision, number_type, text_format)
+			return prefixed_unit(x, &"t/d", precision, number_type, text_format)
 		DynamicUnitType.TIME_D_Y:
 			if x <= 1000.0 * IVUnits.DAY:
-				return fixed_unit(x, "d", precision, number_type, text_format)
+				return fixed_unit(x, &"d", precision, number_type, text_format)
 			else:
-				return fixed_unit(x, "y", precision, number_type, text_format)
+				return fixed_unit(x, &"y", precision, number_type, text_format)
 		DynamicUnitType.VELOCITY_MPS_KMPS: # km/s if >= 1.0 km/s
 			if x < IVUnits.KM / IVUnits.SECOND:
-				return fixed_unit(x, "m/s", precision, number_type, text_format)
-			return fixed_unit(x, "km/s", precision, number_type, text_format)
+				return fixed_unit(x, &"m/s", precision, number_type, text_format)
+			return fixed_unit(x, &"km/s", precision, number_type, text_format)
 		DynamicUnitType.VELOCITY_MPS_KMPS_C: # c if >= 0.1 c
 			if x < IVUnits.KM / IVUnits.SECOND:
-				return fixed_unit(x, "m/s", precision, number_type, text_format)
+				return fixed_unit(x, &"m/s", precision, number_type, text_format)
 			elif x < 0.1 * IVUnits.SPEED_OF_LIGHT:
-				return fixed_unit(x, "c", precision, number_type, text_format)
-			return fixed_unit(x, "km/s", precision, number_type, text_format)
+				return fixed_unit(x, &"c", precision, number_type, text_format)
+			return fixed_unit(x, &"km/s", precision, number_type, text_format)
 			
 	assert(false, "Unknown dynamic_unit_type: %s" % dynamic_unit_type)
 	return str(x)
@@ -477,14 +477,14 @@ func latitude(x: float, decimal_pl := 0, lat_long_type := LatitudeLongitudeType.
 	var suffix: String
 	if lat_long_type == LatitudeLongitudeType.N_S_E_W:
 		if x > -0.0001: # prefer N if nearly 0 after conversion
-			suffix = tr("TXT_NORTH") if long_form else tr("TXT_NORTH_SHORT")
+			suffix = tr(&"TXT_NORTH") if long_form else tr(&"TXT_NORTH_SHORT")
 		else:
-			suffix = tr("TXT_SOUTH") if long_form else tr("TXT_SOUTH_SHORT")
+			suffix = tr(&"TXT_SOUTH") if long_form else tr(&"TXT_SOUTH_SHORT")
 		x = abs(x)
 	elif lat_long_type == LatitudeLongitudeType.LAT_LONG:
-		suffix = tr("TXT_LATITUDE") if long_form else tr("TXT_LATITUDE_SHORT")
+		suffix = tr(&"TXT_LATITUDE") if long_form else tr(&"TXT_LATITUDE_SHORT")
 	else: # PITCH_YAW
-		suffix = tr("TXT_PITCH")
+		suffix = tr(&"TXT_PITCH")
 	
 	match text_format:
 		TextFormat.LONG_UPPER_CASE, TextFormat.SHORT_UPPER_CASE:
@@ -512,16 +512,16 @@ func longitude(x: float, decimal_pl := 0, lat_long_type := LatitudeLongitudeType
 	if lat_long_type == LatitudeLongitudeType.N_S_E_W:
 		x = wrapf(x, -180.0, 180.0)
 		if x > -0.0001 and x < 179.9999: # nearly 0 is E; nearly 180 is W
-			suffix = tr("TXT_EAST") if long_form else tr("TXT_EAST_SHORT")
+			suffix = tr(&"TXT_EAST") if long_form else tr(&"TXT_EAST_SHORT")
 		else:
-			suffix = tr("TXT_WEST") if long_form else tr("TXT_WEST_SHORT")
+			suffix = tr(&"TXT_WEST") if long_form else tr(&"TXT_WEST_SHORT")
 		x = abs(x)
 	elif lat_long_type == LatitudeLongitudeType.LAT_LONG:
 		x = wrapf(x, 0.0, 360.0)
-		suffix = tr("TXT_LONGITUDE") if long_form else tr("TXT_LONGITUDE_SHORT")
+		suffix = tr(&"TXT_LONGITUDE") if long_form else tr(&"TXT_LONGITUDE_SHORT")
 	else: # PITCH_YAW
 		x = wrapf(x, -180.0, 180.0)
-		suffix = tr("TXT_YAW")
+		suffix = tr(&"TXT_YAW")
 	
 	match text_format:
 		TextFormat.LONG_UPPER_CASE, TextFormat.SHORT_UPPER_CASE:
