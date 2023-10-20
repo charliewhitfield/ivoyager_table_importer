@@ -48,7 +48,7 @@ func _enter_tree():
 			" - https://ivoyager.dev")
 	_config = plugin_utils.get_config_with_override(
 			"res://addons/ivoyager_table_importer/table_importer.cfg",
-			"res://ivoyager_override.cfg", "table_importer_")
+			"res://ivoyager_override.cfg", "res://ivoyager_override2.cfg")
 	if !_config:
 		return
 	add_custom_type("IVTableResource", "Resource", TableResource, _get_table_resource_icon())
