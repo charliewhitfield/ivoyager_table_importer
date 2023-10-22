@@ -24,7 +24,7 @@ extends Node
 # All table data interface is here!
 #
 # Data dictionaries are populated only after postprocess_tables() is called.
-# Access data directly in dictionaries or use API.
+# Access data directly in dictionaries or use API. All data is read-only!
 #
 # Postprocessed table data is in dictionary 'tables'.
 #
@@ -50,18 +50,14 @@ var precisions := {} # populated if enable_precisions (indexed as tables for FLO
 func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wiki := false,
 		enable_precisions := false) -> void:
 	# Call this function to populate dictionaries with postprocessed table data.
+	# Call once only! All containers are set to read-only.
 	# See comments in units.gd to change float conversion units.
 	
 	# Cast arrays here so user isn't forced to input typed arrays.
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
 	
-	# Postprocess after clearing data (maybe user calls again for some reason?)
-	tables.clear()
-	enumerations.clear()
-	enumeration_dicts.clear()
-	wiki_lookup.clear()
-	precisions.clear()
+	# Postprocess
 	var table_postprocessor := TablePostprocessor.new()
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
 			enumerations, enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes,
@@ -84,24 +80,20 @@ func get_row(entity: StringName) -> int:
 func get_enumeration_dict(table_or_entity: StringName) -> Dictionary:
 	# Returns an enum-like dict of row numbers keyed by entity names.
 	# Works for DB_ENTITIES and ENUMERATION tables and 'project_enums'.
-	# Duplicated for safety. You can get internal dictionary directly if you want.
 	assert(enumeration_dicts.has(table_or_entity),
 			"Specified table or entity '%s' does not exist or table does not have entity names"
 			% table_or_entity)
-	var enumeration_dict: Dictionary = enumeration_dicts[table_or_entity]
-	return enumeration_dict.duplicate()
+	return enumeration_dicts[table_or_entity] # read-only
 
 
 func get_enumeration_array(table_or_entity: StringName) -> Array[StringName]:
 	# Returns an array of entity names.
 	# Works for DB_ENTITIES and ENUMERATION tables.
 	# Also works for 'project_enums' IF it is simple sequential: 0, 1, 2,...
-	# Duplicated for safety. You can get internal array directly if you want.
 	assert(enumeration_dicts.has(table_or_entity),
 			"Specified table or entity '%s' does not exist or table does not have entity names"
 			% table_or_entity)
-	var enumeration_array: Array[StringName] = enumeration_arrays[table_or_entity]
-	return enumeration_array.duplicate()
+	return enumeration_arrays[table_or_entity] # read-only
 
 
 func has_entity_name(table: StringName, entity: StringName) -> bool:
@@ -144,14 +136,13 @@ func get_db_entity_name(table: StringName, row: int) -> StringName:
 
 
 func get_db_field_array(table: StringName, field: StringName) -> Array:
-	# Duplicated for safety. User can get internal array from dictionary.
+	# Return array is content-typed by field and read-only.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
 	var table_dict: Dictionary = tables[table]
 	if !table_dict.has(field):
 		return []
-	var field_array: Array = table_dict[field]
-	return field_array.duplicate()
+	return table_dict[field] # read-only
 
 
 func db_find(table: StringName, field: StringName, value: Variant) -> int:
