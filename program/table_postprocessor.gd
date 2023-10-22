@@ -147,6 +147,47 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 			TableDirectives.ENUM_X_ENUM:
 				_postprocess_enum_x_enum(table_res)
 	
+	# make all containers read-only
+	tables.make_read_only()
+	enumerations.make_read_only()
+	enumeration_dicts.make_read_only()
+	enumeration_arrays.make_read_only()
+	table_n_rows.make_read_only()
+	entity_prefixes.make_read_only()
+	wiki_lookup.make_read_only()
+	precisions.make_read_only()
+	
+	for table_name: StringName in tables:
+		if typeof(tables[table_name]) == TYPE_DICTIONARY:
+			var dict_of_field_arrays: Dictionary = tables[table_name]
+			dict_of_field_arrays.make_read_only()
+			for field: StringName in dict_of_field_arrays:
+				var field_array: Array = dict_of_field_arrays[field]
+				field_array.make_read_only()
+				if field_array.get_typed_builtin() == TYPE_ARRAY:
+					for array: Array in field_array:
+						array.make_read_only()
+		else:
+			var array_of_arrays: Array[Array] = tables[table_name]
+			array_of_arrays.make_read_only()
+			for array in array_of_arrays:
+				array.make_read_only()
+	
+	for key in enumeration_dicts:
+		var enumeration_dict: Dictionary = enumeration_dicts[key]
+		enumeration_dict.make_read_only()
+	
+	for key in enumeration_arrays:
+		var enumeration_array: Array[StringName] = enumeration_arrays[key]
+		enumeration_array.make_read_only()
+	
+	for table_name: StringName in precisions:
+		var dict_of_field_arrays: Dictionary = tables[table_name]
+		dict_of_field_arrays.make_read_only()
+		for field: StringName in dict_of_field_arrays:
+			var field_array: Array[float] = dict_of_field_arrays[field]
+			field_array.make_read_only()
+	
 	var msec := Time.get_ticks_msec() - _start_msec
 	print("Processed %s table items in %s msec" % [_count, msec])
 

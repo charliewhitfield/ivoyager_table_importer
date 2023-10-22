@@ -4,9 +4,10 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.7] - Not Released
 
-Under development using Godot 4.2.dev6 (backward breaking changes!)
+Under development using Godot 4.2.beta2. _Has backward breaking changes!_
 
 ### Changed
+* All IVTableData dictionaries and nested dictionaries and arrays are read-only.
 * For loop typing and error fixes for Godot 4.2.
 
 ## [v0.0.6] - 2023-10-05
