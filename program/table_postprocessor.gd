@@ -182,10 +182,10 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 		enumeration_array.make_read_only()
 	
 	for table_name: StringName in precisions:
-		var dict_of_field_arrays: Dictionary = tables[table_name]
+		var dict_of_field_arrays: Dictionary = precisions[table_name]
 		dict_of_field_arrays.make_read_only()
 		for field: StringName in dict_of_field_arrays:
-			var field_array: Array[float] = dict_of_field_arrays[field]
+			var field_array: Array[int] = dict_of_field_arrays[field]
 			field_array.make_read_only()
 	
 	var msec := Time.get_ticks_msec() - _start_msec
