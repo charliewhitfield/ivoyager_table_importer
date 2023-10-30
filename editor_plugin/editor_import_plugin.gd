@@ -48,11 +48,11 @@ func _get_preset_count() -> int:
 	return 0
 
 
-func _get_preset_name(preset_index: int) -> String:
+func _get_preset_name(_preset_index: int) -> String:
 	return "Default"
 
 
-func _get_import_options(path, preset_index) -> Array:
+func _get_import_options(_path: String, _preset_index: int) -> Array:
 	return []
 
 
@@ -64,9 +64,9 @@ func _get_import_order() -> int:
 	return 0
 
 
-func _import(source_path: String, save_path: String, options: Dictionary,
+func _import(source_path: String, save_path: String, _options: Dictionary,
 		_r_platform_variants: Array, _r_gen_files: Array) -> Error:
-	var file = FileAccess.open(source_path, FileAccess.READ)
+	var file := FileAccess.open(source_path, FileAccess.READ)
 	if !file:
 		return FileAccess.get_open_error()
 	var table_res := TableResource.new()

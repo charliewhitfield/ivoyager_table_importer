@@ -456,7 +456,7 @@ func db_get_flags(flag_fields: Dictionary, table: StringName, row: int, flags :=
 	# i.e., is true or x. Does not unset.
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
-	for flag in flag_fields:
+	for flag: int in flag_fields:
 		var field: StringName = flag_fields[flag]
 		if get_db_bool(table, field, row):
 			flags |= flag

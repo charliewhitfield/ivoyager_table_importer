@@ -259,7 +259,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 		var line_array: Array[String] = cells[0]
 		assert(!line_array[0], "Left-most cell of field name header must be empty in %s, 0" % path)
 		column_names = []
-		for column in skip_column_0_iterator:
+		for column: int in skip_column_0_iterator:
 			var field := StringName(line_array[column])
 			assert(field != &"name", "Use of 'name' as field is not allowed in %s, 0, %s" % [path,
 					column])
@@ -284,7 +284,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 						"Don't use Type in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
 						"Don't use Type in WIKI_LOOKUP table %s, %s" % [path, row])
-				for column in skip_column_0_iterator:
+				for column: int in skip_column_0_iterator:
 					assert(line_array[column], "Missing Type in %s, %s, %s" % [path, row, column])
 					var field := column_names[column - 1]
 					debug_pos = "Type header, " + field
@@ -298,7 +298,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 						"Don't use Unit in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
 						"Don't use Unit in WIKI_LOOKUP table %s, %s" % [path, row])
-				for column in skip_column_0_iterator:
+				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
 						unit_names[field] = StringName(line_array[column]) # verify is FLOAT below
@@ -310,7 +310,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 						"Don't use Default in ENUMERATION table %s, %s" % [path, row])
 				assert(!is_wiki_lookup,
 						"Don't use Default in WIKI_LOOKUP table %s, %s" % [path, row])
-				for column in skip_column_0_iterator:
+				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
 						raw_defaults[field] = line_array[column] # preprocess below
@@ -322,7 +322,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 					assert(line_array[0][6] == "/",
 							"Bad Prefix construction %s in %s, %s" % [line_array[0], path, row])
 					entity_prefix = line_array[0].trim_prefix("Prefix/")
-				for column in skip_column_0_iterator:
+				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
 						prefixes[field] = line_array[column]
@@ -333,12 +333,12 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 			n_rows = n_cell_rows - row
 			assert(has_types or is_enumeration or is_wiki_lookup,
 					"Table format requires 'Type' in " + path)
-			for field in unit_names:
+			for field: StringName in unit_names:
 				assert(postprocess_types[field] == TYPE_FLOAT,
 						"Non-FLOAT field '%s' has Unit in %s" % [field, path])
 			
 			# preprocess defaults
-			for field in raw_defaults:
+			for field: StringName in raw_defaults:
 				var raw_default: String = raw_defaults[field]
 				var prefix: String = prefixes.get(field, "")
 				var postprocess_type: int = postprocess_types[field]
@@ -377,7 +377,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 				continue
 		
 		# process content columns
-		for column in skip_column_0_iterator:
+		for column: int in skip_column_0_iterator:
 			var field := column_names[column - 1]
 			var raw_value: String = line_array[column]
 			var preprocess_value: Variant
@@ -464,7 +464,7 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 	
 	# set column names
 	var line_array: Array[String] = cells[0]
-	for column in skip_column_0_iterator:
+	for column: int in skip_column_0_iterator:
 		column_names[column - 1] = StringName(column_prefix + line_array[column])
 	
 	# process data rows
@@ -472,7 +472,7 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 	while row < n_cell_rows:
 		line_array = cells[row]
 		row_names[row - 1] = StringName(row_prefix + line_array[0])
-		for column in skip_column_0_iterator:
+		for column: int in skip_column_0_iterator:
 			var raw_value := line_array[column]
 			var preprocess_value: Variant
 			if raw_value:

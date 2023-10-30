@@ -103,7 +103,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	for project_enum in project_enums:
 		var is_simple_sequential := true # test this
 		i = 0
-		for entity_name in project_enum:
+		for entity_name: StringName in project_enum:
 			if project_enum[entity_name] != i:
 				is_simple_sequential = false
 				break
@@ -112,7 +112,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 		var enum_array: Array[StringName] = []
 		if is_simple_sequential:
 			enum_array.resize(size)
-		for entity_name in project_enum:
+		for entity_name: StringName in project_enum:
 			assert(!enumerations.has(entity_name), "Table enumerations must be globally unique!")
 			var enumeration: int = project_enum[entity_name]
 			enumerations[entity_name] = enumeration
@@ -173,11 +173,11 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 			for array in array_of_arrays:
 				array.make_read_only()
 	
-	for key in enumeration_dicts:
+	for key: StringName in enumeration_dicts:
 		var enumeration_dict: Dictionary = enumeration_dicts[key]
 		enumeration_dict.make_read_only()
 	
-	for key in enumeration_arrays:
+	for key: StringName in enumeration_arrays:
 		var enumeration_array: Array[StringName] = enumeration_arrays[key]
 		enumeration_array.make_read_only()
 	
@@ -368,20 +368,20 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 	# resize dictionary columns (if needed) imputing default values
 	if n_rows_after_mods > n_rows:
 		var new_rows := range(n_rows, n_rows_after_mods)
-		for field in table_dict:
+		for field: StringName in table_dict:
 			var field_array: Array = table_dict[field]
 			field_array.resize(n_rows_after_mods)
 			var default: Variant = defaults[field]
-			for row in new_rows:
+			for row: int in new_rows:
 				field_array[row] = default
 				_count += 1
 		_table_n_rows[modifies_table_name] = n_rows_after_mods
 		# precisions
 		if _enable_precisions:
-			for field in precisions_dict:
+			for field: StringName in precisions_dict:
 				var precisions_array: Array[int] = precisions_dict[field]
 				precisions_array.resize(n_rows_after_mods)
-				for row in new_rows:
+				for row: int in new_rows:
 					precisions_array[row] = -1
 	
 	# add/overwrite table values
@@ -478,7 +478,8 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 			var column_name := column_names[import_column]
 			var column: int = column_enumeration[column_name]
 			var import_value: Variant = import_array_of_arrays[import_row][import_column]
-			var postprocess_value = _get_postprocess_value(import_value, type, unit, str_array)
+			var postprocess_value: Variant = _get_postprocess_value(import_value, type, unit,
+					str_array)
 			_count += 1
 			table_array_of_arrays[row][column] = postprocess_value
 	
@@ -488,7 +489,7 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 func _get_str_unindexing(str_indexing: Dictionary) -> Array[String]:
 	var str_array: Array[String] = []
 	str_array.resize(str_indexing.size())
-	for string in str_indexing:
+	for string: String in str_indexing:
 		var idx: int = str_indexing[string]
 		str_array[idx] = string
 	return str_array
