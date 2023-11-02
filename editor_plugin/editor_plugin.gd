@@ -67,7 +67,7 @@ func _exit_tree() -> void:
 
 
 func _get_table_resource_icon() -> Texture2D:
-	var editor_gui := get_editor_interface().get_base_control()
+	var editor_gui := EditorInterface.get_base_control()
 	return editor_gui.get_theme_icon("Grid", "EditorIcons")
 
 
