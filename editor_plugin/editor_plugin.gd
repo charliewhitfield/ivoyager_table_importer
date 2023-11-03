@@ -43,7 +43,7 @@ var _autoloads := {}
 
 
 
-func _enter_tree():
+func _enter_tree() -> void:
 	plugin_utils.print_plugin_name_and_version("res://addons/ivoyager_table_importer/plugin.cfg",
 			" - https://ivoyager.dev")
 	_config = plugin_utils.get_config_with_override(
@@ -57,7 +57,7 @@ func _enter_tree():
 	_add_autoloads()
 
 
-func _exit_tree():
+func _exit_tree() -> void:
 	print("Removing I, Voyager - Table Importer (plugin)")
 	_config = null
 	remove_custom_type("IVTableResource")
@@ -67,7 +67,7 @@ func _exit_tree():
 
 
 func _get_table_resource_icon() -> Texture2D:
-	var editor_gui := get_editor_interface().get_base_control()
+	var editor_gui := EditorInterface.get_base_control()
 	return editor_gui.get_theme_icon("Grid", "EditorIcons")
 
 
@@ -78,13 +78,13 @@ func _add_autoloads() -> void:
 			assert(typeof(value) == TYPE_STRING,
 					"'%s' must specify a path as String" % autoload_name)
 			_autoloads[autoload_name] = value
-	for autoload_name in _autoloads:
+	for autoload_name: String in _autoloads:
 		var path: String = _autoloads[autoload_name]
 		add_autoload_singleton(autoload_name, path)
 
 
 func _remove_autoloads() -> void:
-	for autoload_name in _autoloads:
+	for autoload_name: String in _autoloads:
 		remove_autoload_singleton(autoload_name)
 	_autoloads.clear()
 
