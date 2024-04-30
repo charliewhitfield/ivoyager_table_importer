@@ -1,6 +1,6 @@
 # I, Voyager - Table Importer
 
-TL;DR: This Godot Editor plugin imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. It imputes defaults, prefixes strings, converts floats by specified units, and converts text enumerations to integers (enumerations can be project or table-defined), ... amongst other things. 
+TL;DR: This Godot Editor plugin imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. It can impute defaults, convert floats by specified units, prefix text, convert text enumerations to integers, and more! 
 
 ## Installation
 
@@ -25,7 +25,7 @@ It provides several specific table file formats that allow:
 * Specification of data `Type` so that all table values are correctly converted to statically typed internal values.
 * Specification of data `Default` to reduce table clutter. Fields that are mostly a particular value can be left mostly empty.
 * Specification of data `Prefix` to reduce enumeration text size. E.g., shorten 'PLANET_MERCURY', 'PLANET_VENUS', 'PLANET_EARTH' to 'MERCURY', 'VENUS', 'EARTH'.
-* Specification of float `Unit` so file data can be entered in the most convenient units while maintaining consistent internal representation.
+* Specification of float `Unit` so file data can be entered in the most convenient units while maintaining consistent internal representation. Unit can be specified for a whole column (for 'db' formats), whole table (for enum x enum format) or per value (anywhere a float is expected; e.g., '1000 s' or '1000/s').
 * Table **enumerations** that may reference project enums _**or**_ table-defined entity names. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _in any table_ because 'PLANET_EARTH' is row 3 in planets.tsv.
 * 'Mod' tables that modify existing tables.
 * [Optionally] Construction of a wiki lookup dictionary to use for an internal or external wiki.
@@ -36,7 +36,7 @@ File and table formats are described below.
 
 ## Usage
 
-All user interface is via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing intructions and access all postprocessed table data. IVTableData also provides functions to build objects, dictionaries, or flag fields directly from table data. See API in [table_data.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/table_data.gd).
+All user interface is via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing intructions and access all postprocessed table data. IVTableData also provides functions to build objects, dictionaries, or flag fields directly from table data. See API in [table_data.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/singletons/table_data.gd).
 
 Postprocessing is controled by function:
 
@@ -93,10 +93,10 @@ After field names and before data, tables can have the following header rows in 
    * `STRING_NAME` - No escaping. Empty cells will be imputed with `Default` or &"".
    * `BOOL` - Case-insensitive 'True' or 'False'. 'x' (lower case) is interpreted as True. Empty cells will be imputed with `Default` or False. Any other cell values will cause an error.
    * `INT` - A valid integer or text 'enumeration'. Enumerations may include any table entity name (from _any_ table) or hard-coded project enums specified in the `postprocess_tables()` call (enumerations that can't be found will cause an error at this function call). Empty cells will be imputed with `Default` or -1.
-   * `FLOAT` - 'INF', '-INF' and 'NAN' (case-insensitive) are correctly interpreted. '?' and '-?' are interpreted as INF and -INF, respectively. 'E' or 'e' are ok. Underscores '_' are allowed and removed before float conversion. A '~' prefix is allowed and affects precision (see below) but not float value. Empty cells will be imputed with `Default` or NAN.
+   * `FLOAT` - 'INF', '-INF' and 'NAN' (case-insensitive) are correctly interpreted. '?' and '-?' are interpreted as INF and -INF, respectively. 'E' or 'e' are ok. Underscores '_' are allowed and removed before float conversion. A '~' prefix is allowed and affects precision (see below) but not float value. Empty cells will be imputed with `Default` or NAN. **Inline units:** An inline unit can be specified using format 'x unit' or 'x/unit'. E.g., '1000 s' and '1000/s' are valid (the latter is equivilent to '1000 1/s'). If an inline unit is present, it will override the column `Unit`. See `Unit` below for more details.
    * `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ',' (no space) and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Empty cells will be imputed with `Default` or an empty, typed array.
 * `Default` (optional): Default values must be empty or follow Type rules above. If non-empty, this value is imputed for any empty cells in the column.
-* `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts table floats to SI base units in the postprocessed 'internal' data. Default unit conversions are defined by 'unit_multipliers' and 'unit_lambdas' dictionaries [here](https://github.com/charliewhitfield/ivoyager_table_importer/blob/develop/table_unit_defaults.gd). Unit symbols and/or internal representation can be changed by specifying replacement conversion dictionaries in the `postprocess_tables()` call.
+* `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts table floats to SI base units in the postprocessed 'internal' data. Default unit conversions are defined by 'unit_multipliers' and 'unit_lambdas' dictionaries [here](https://github.com/ivoyager/ivoyager_table_importer/blob/master/singletons/units.gd). Unit symbols and/or internal representation can be changed by specifying replacement conversion dictionaries in the `postprocess_tables()` call.
 * `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-empty cells and `Default` (if specified) with provided prefix text. To prefix the column 0 implicit 'name' field, use `Prefix/<entity prefix>`. E.g., we use `Prefix/PLANET_` in [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all entity names with 'PLANET_'.
 
 #### Entity Names
@@ -130,7 +130,7 @@ Additionally, **any** number that is prefixed with '~' is considered a zero-prec
 
 ## DB_ENTITIES_MOD Format
 
-[Example Table](https://github.com/t2civ/astropolis_public/blob/master/data/tables/planets_mod.tsv)
+[Example Table](https://github.com/t2civ/astropolis_sdk/blob/master/public/data/tables/planets_mod.tsv)
 
 Optional specifier: `@DB_ENTITIES_MOD[=<table_name>]` (table_name defaults to the base file name)  
 Required directive: `@MODIFIES=<table_name>`  
@@ -175,7 +175,7 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 ## ENUM_X_ENUM Format
 
-[Example Table](https://github.com/t2civ/astropolis_public/blob/master/data/tables/compositions_resources_percents.tsv)
+[Example Table](https://github.com/t2civ/astropolis_sdk/blob/master/public/data/tables/compositions_resources_proportions.tsv)
 
 Required specifier: `@ENUM_X_ENUM[=<table_name>]` (table_name defaults to the base file name)  
 Required directive: `@DATA_TYPE=<Type>`  
