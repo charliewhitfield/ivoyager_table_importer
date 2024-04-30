@@ -517,10 +517,13 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 			return INF
 		if import_str == "-?":
 			return -INF
-		var import_float := import_str.lstrip("~").to_float()
-		if !unit:
-			return import_float
-		return IVQConvert.convert_quantity(import_float, unit, true, true)
+		var unit_split := import_str.split(" ", false, 1)
+		if unit_split.size() == 2:
+			unit = StringName(unit_split[1]) # overrides column unit!
+		var import_float := unit_split[0].lstrip("~").to_float()
+		if unit:
+			return IVQConvert.convert_quantity(import_float, unit, true, true)
+		return import_float
 	
 	if type == TYPE_STRING:
 		if import_value == null:
@@ -569,13 +572,17 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 
 func _get_float_str_precision(float_str: String) -> int:
 	# Based on preprocessed strings from table_resource.gd.
+	# We ignore an inline unit, if present.
 	# We ignore leading zeroes.
-	# We count trailing zeroes IF the number has a decimal place.
+	# We count trailing zeroes IF AND ONLY IF the number has a decimal place.
 	match float_str:
 		"", "?", "-?":
 			return -1
 	if float_str.begins_with("~"):
 		return 0
+	var unit_split := float_str.split(" ", false, 1)
+	if unit_split.size() == 2:
+		float_str = unit_split[0]
 	var length := float_str.length()
 	var n_digits := 0
 	var started := false

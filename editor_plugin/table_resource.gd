@@ -526,17 +526,32 @@ func _get_preprocess_value(value: String, postprocess_type: int, prefix: String)
 			return 0
 		
 		TYPE_FLOAT:
-			# Store as a string so postprocessor can determine precision.
+			# A few special values (including blank) are converted to "", "?"
+			# or "-?", which stand in for NAN, INF and -INF. Otherwise, we
+			# store the value as a string so postprocessor can determine
+			# precision and/or deal with an inline unit.
 			if value == "" or value.matchn("nan"):
 				return ""
 			if value == "?" or value.matchn("inf"):
 				return "?"
 			if value == "-?" or value.matchn("-inf"):
 				return "-?"
+			# Possible inline unit. Convert "x/unit" to "x 1/unit" so we don't
+			# have to test in postprocess.
+			var inline_unit := ""
+			var unit_split := value.split(" ", false, 1)
+			if unit_split.size() == 2:
+				value = unit_split[0]
+				inline_unit = " " + unit_split[1]
+			else:
+				unit_split = value.split("/", false, 1)
+				if unit_split.size() == 2:
+					value = unit_split[0]
+					inline_unit = " 1/" + unit_split[1]
 			value = value.replace("E", "e").replace("_", "")
 			assert(value.lstrip("~").is_valid_float(), "Invalid float '%s' in %s, %s" % [value,
 					path, debug_pos])
-			return value
+			return value + inline_unit
 		
 		TYPE_STRING, TYPE_STRING_NAME, TYPE_INT:
 			# Index all text types; INTs are often enumerations.

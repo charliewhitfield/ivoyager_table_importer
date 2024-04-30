@@ -2,6 +2,13 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.0.8] - Not Released
+
+Under development using Godot 4.2.1.
+
+### Added
+* Support inline unit specification for floats. E.g., '1000 s' and '1000/s' are valid anywhere a float is expected. If an inline unit is specified, it will override the column `Unit` (for 'db' formatted tables) or the table `Unit` (for enum x enum format).
+
 ## [v0.0.7] - 2024-03-15
 
 Developed using Godot 4.2.1. _Has backward breaking changes!_
@@ -69,6 +76,7 @@ Developed using Godot 4.1.1.
 Initial alpha release!
 
 
+[v0.0.8]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.7...HEAD
 [v0.0.7]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.6...v0.0.7
 [v0.0.6]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...v0.0.5
