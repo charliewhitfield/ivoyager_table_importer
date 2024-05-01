@@ -334,8 +334,10 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 			assert(has_types or is_enumeration or is_wiki_lookup,
 					"Table format requires 'Type' in " + path)
 			for field: StringName in unit_names:
-				assert(postprocess_types[field] == TYPE_FLOAT,
-						"Non-FLOAT field '%s' has Unit in %s" % [field, path])
+				var type: int = postprocess_types[field]
+				assert(type == TYPE_FLOAT or type == TYPE_MAX + TYPE_FLOAT,
+						"Unit specified in field '%s' that is neither FLOAT nor ARRAY[FLOAT]: %s"
+						% [field, path])
 			
 			# preprocess defaults
 			for field: StringName in raw_defaults:

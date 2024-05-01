@@ -9,6 +9,9 @@ Under development using Godot 4.2.1.
 ### Added
 * Support inline unit specification for floats. E.g., '1000 s' and '1000/s' are valid anywhere a float is expected. If an inline unit is specified, it will override the column `Unit` (for 'db' formatted tables) or the table `Unit` (for enum x enum format).
 
+### Fixed
+* Don't assert when Unit specified for column type ARRAY[FLOAT].
+
 ## [v0.0.7] - 2024-03-15
 
 Developed using Godot 4.2.1. _Has backward breaking changes!_
