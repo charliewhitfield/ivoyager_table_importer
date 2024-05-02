@@ -368,9 +368,9 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 
 
 func prefixed_named_number(x: float, prefix: String, precision := 3,
-		text_format := TextFormat.SHORT_MIXED_CASE) -> String:
+		text_format := TextFormat.SHORT_MIXED_CASE, multiplier := 1.0) -> String:
 	# Same as named_number() but prefixes the number, e.g., '$1.00 Billion'.
-	return prefix + named_number(x, precision, text_format)
+	return prefix + named_number(x * multiplier, precision, text_format)
 
 
 func fixed_unit(x: float, unit: StringName, precision := 3,
