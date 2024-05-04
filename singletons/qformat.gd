@@ -367,9 +367,16 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	return number(x, precision, NumberType.DYNAMIC) + " " + lg_number_str
 
 
+func modified_named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXED_CASE,
+		prefix := "", suffix := "", multiplier := 1.0) -> String:
+	# Same as named_number() but add prefix and/or suffix & apply
+	# multiplier: e.g., '$1.00 Billion', '1.00 Million Species', etc.
+	return prefix + named_number(x * multiplier, precision, text_format) + suffix
+
+
 func prefixed_named_number(x: float, prefix: String, precision := 3,
 		text_format := TextFormat.SHORT_MIXED_CASE, multiplier := 1.0) -> String:
-	# Same as named_number() but prefixes the number, e.g., '$1.00 Billion'.
+	# DEPRECIATE: Use modified_named_number()
 	return prefix + named_number(x * multiplier, precision, text_format)
 
 
