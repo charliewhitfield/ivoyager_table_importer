@@ -47,6 +47,11 @@ func convert_quantity(x: float, unit: StringName, to_internal := true,
 	# attempted. Dictionary 'unit_multipliers' can have compound units like
 	# 'm/s^2' for quick lookup without parsing.
 	#
+	# If a unit string is parsed, then the unit name and multiplier will be
+	# added to 'unit_multipliers' as a key-value pair. This greately speeds up
+	# subsequent usage and makes the unit string directly accessible in the 
+	# dictionary (e.g., by GUI).
+	#
 	# See parsing comments in get_parsed_unit_multiplier().
 	if !unit:
 		return x
@@ -65,12 +70,16 @@ func convert_quantity(x: float, unit: StringName, to_internal := true,
 		return NAN
 	
 	multiplier = get_parsed_unit_multiplier(unit, assert_error)
+	
+	unit_multipliers[unit] = multiplier # for direct access in subsequent usage!
+	
 	return x * multiplier if to_internal else x / multiplier
 
 
 func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
-	# Parsing isn't super fast. To optimize, add commonly used compound units
-	# to your 'unit_multipliers' dictionary.
+	# Parsing isn't super fast. But once encountered by convert_quantity(), the
+	# unit name will be added to the 'unit_multipliers' dictionary for quick
+	# subsequent usage.
 	#
 	# Parser rules:
 	#
