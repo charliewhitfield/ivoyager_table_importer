@@ -11,6 +11,7 @@ Under development using Godot 4.2.1.
 
 ### Changed
 * When IVQConvert.convert_unit() has to parse a compound unit not in 'unit_multipliers' dictionary, it will add the unit string and calculated multiplier to the dictionary. This allows quicker subsequent use or direct dictionary access of the unit string, e.g., by GUI.
+* Allow commas in float values.
 
 ### Fixed
 * Don't assert when Unit specified for column type ARRAY[FLOAT].
