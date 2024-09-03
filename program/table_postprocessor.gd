@@ -559,6 +559,7 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		if import_value == null:
 			return array # empty typed array
 		assert(typeof(import_value) == TYPE_ARRAY, "Unexpected import data type")
+		@warning_ignore("unsafe_cast")
 		var import_array := import_value as Array
 		var size := import_array.size()
 		array.resize(size)
@@ -610,5 +611,3 @@ func _get_float_str_precision(float_str: String) -> int:
 	if deduct_zeroes:
 		n_digits -= n_unsig_zeros
 	return n_digits
-
-
