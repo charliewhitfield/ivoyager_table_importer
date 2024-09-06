@@ -588,4 +588,3 @@ func _get_str_index(value: String) -> int:
 		str_indexing[value] = idx
 		next_idx += 1
 	return idx
-

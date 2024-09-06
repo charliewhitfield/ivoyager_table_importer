@@ -87,4 +87,3 @@ func _remove_autoloads() -> void:
 	for autoload_name: String in _autoloads:
 		remove_autoload_singleton(autoload_name)
 	_autoloads.clear()
-
