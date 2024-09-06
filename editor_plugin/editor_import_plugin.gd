@@ -74,4 +74,3 @@ func _import(source_path: String, save_path: String, _options: Dictionary,
 	
 	var filename := save_path + "." + _get_save_extension()
 	return ResourceSaver.save(table_res, filename)
-

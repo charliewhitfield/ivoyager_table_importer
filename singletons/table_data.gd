@@ -461,4 +461,3 @@ func db_get_flags(flag_fields: Dictionary, table: StringName, row: int, flags :=
 		if get_db_bool(table, field, row):
 			flags |= flag
 	return flags
-

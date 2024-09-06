@@ -540,4 +540,3 @@ func longitude(x: float, decimal_pl := 0, lat_long_type := LatitudeLongitudeType
 				suffix = suffix.to_lower()
 	
 	return "%.*f\u00B0 %s" % [decimal_pl, x, suffix]
-

@@ -193,4 +193,3 @@ func get_parsed_unit_multiplier(unit_str: String, assert_error: bool) -> float:
 	
 	assert(!assert_error, "Could not parse unit string or substring '%s'" % unit_str)
 	return NAN
-
