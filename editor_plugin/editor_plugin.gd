@@ -33,7 +33,7 @@ extends EditorPlugin
 # to update changes outside of editor; we'll open an issue if this isn't fixed
 # in 4.2-beta builds).
 
-const plugin_utils := preload("plugin_utils.gd")
+const plugin_utils := preload("table_importer_plugin_utils.gd")
 const TableResource := preload("table_resource.gd")
 const EditorImportPluginClass := preload("editor_import_plugin.gd")
 

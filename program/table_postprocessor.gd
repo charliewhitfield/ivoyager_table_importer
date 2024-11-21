@@ -59,14 +59,24 @@ var _enable_precisions: bool
 
 var _table_defaults := {} # only tables that might be modified
 
+var _modding_table_resources: Dictionary
+
 var _start_msec: int
 var _count: int
+
+
+
+func set_modding_tables(modding_table_resources: Dictionary) -> void:
+	# Called by IVTableModding. If used, must be called before postprocess().
+	_modding_table_resources = modding_table_resources
+
 
 func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
-		wiki_lookup: Dictionary, precisions: Dictionary,
-		enable_wiki: bool, enable_precisions: bool) -> void:
+		wiki_lookup: Dictionary, precisions: Dictionary, enable_wiki: bool, enable_precisions: bool,
+		) -> void:
+	# Called by IVTableData.
 	
 	_start_msec = Time.get_ticks_msec()
 	_count = 0
@@ -84,10 +94,15 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	
 	var table_resources: Array[TableResource] = []
 	for path in table_file_paths:
-		var table_res: TableResource = load(path)
+		var name := path.get_basename().get_file()
+		var table_res: TableResource
+		if _modding_table_resources and _modding_table_resources.has(name):
+			table_res = _modding_table_resources[name]
+		else:
+			table_res = load(path)
 		table_resources.append(table_res)
 	
-	# move mod tables to end, but keep order otherwise
+	# move mod tables to end (this is the only case where order matters)
 	var i := 0
 	var stop := table_resources.size()
 	while i < stop:

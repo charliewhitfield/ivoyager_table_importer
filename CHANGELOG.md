@@ -8,6 +8,7 @@ Under development using Godot 4.3.
 
 ### Added
 * Support inline unit specification for floats. E.g., '1000 s' and '1000/s' are valid anywhere a float is expected. If an inline unit is specified, it will override the column `Unit` (for 'db' formatted tables) or the table `Unit` (for enum x enum format).
+* Easy user modding by replacement files in a user directory. See details in [table_modding.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/program/table_postprocessor.gd).
 
 ### Changed
 * When IVQConvert.convert_unit() has to parse a compound unit not in 'unit_multipliers' dictionary, it will add the unit string and calculated multiplier to the dictionary. This allows quicker subsequent use or direct dictionary access of the unit string, e.g., by GUI.

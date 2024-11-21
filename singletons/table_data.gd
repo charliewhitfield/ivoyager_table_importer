@@ -46,31 +46,29 @@ var entity_prefixes := {} # indexed by table name (must have header 'Prefix/<ent
 var wiki_lookup := {} # populated if enable_wiki
 var precisions := {} # populated if enable_precisions (indexed as tables for FLOAT fields)
 
+var table_postprocessor := TablePostprocessor.new() # will be nulled after use
+
 
 func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wiki := false,
 		enable_precisions := false) -> void:
-	# Call this function to populate dictionaries with postprocessed table data.
-	# Call once only! All containers are set to read-only.
-	# See comments in units.gd to change float conversion units.
-	
-	# Cast arrays here so user isn't forced to input typed arrays.
+	# Call this function once to populate dictionaries with postprocessed table
+	# data. All containers are set to read-only. See comments in units.gd to
+	# change float conversion units.
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
-	
-	# Postprocess
-	var table_postprocessor := TablePostprocessor.new()
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
 			enumerations, enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes,
 			wiki_lookup, precisions, enable_wiki, enable_precisions)
+	table_postprocessor = null
 
 
-# For get functions, table is "planets", "moons", etc. Most get functions
+# For get functions below, table is "planets", "moons", etc. Most get functions
 # accept either row (int) or entity (StringName), but not both!
 #
 # In general, functions will throw an error if 'table' or a specified 'entity'
-# is missing, or 'row' is out of range. However, missing 'field' will not
-# error and function will return type-null value "", &"", NAN, -1 or []
-# (this is needed for dictionary and object constructor methods).
+# is missing or 'row' is out of range. However, a missing 'field' will not
+# error and will return a 'null'-type value: "", &"", NAN, -1 or [].
+# (This is needed for dictionary and object constructor methods.)
 
 func get_row(entity: StringName) -> int:
 	# Returns -1 if missing. All entity's are globally unique.
