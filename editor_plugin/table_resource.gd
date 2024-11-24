@@ -86,17 +86,20 @@ const VERBOSE := true # prints a single line on import
 @export var modifies_table_name := &"" # DB_ENTITIES_MOD only
 
 # db style
-@export var dict_of_field_arrays: Dictionary # preprocessed data indexed [field][row]
-@export var postprocess_types: Dictionary # ints indexed [field]
-@export var default_values: Dictionary # preprocessed data indexed [field] (if Default exists)
-@export var unit_names: Dictionary # StringNames indexed [field] (FLOAT fields if Unit exists)
+@export var dict_of_field_arrays: Dictionary # indexed data [field][row]
+@export var db_prefixes: Dictionary
+@export var db_types: Dictionary # ints indexed [field]
+@export var db_units: Dictionary # StringNames [field] (FLOAT fields if Unit exists)
+@export var db_import_defaults: Dictionary # indexed data [field] (if Default exists)
 
 # enum x enum
 @export var array_of_arrays: Array[Array] # preprocessed data indexed [row_enum][column_enum]
-@export var enum_x_enum_info: Array # [postprocess_type, unit_name, import_default]
+@export var exe_type: int
+@export var exe_unit: StringName
+@export var exe_import_default: int
 
 # indexing
-@export var str_indexing := {"" : 0} # empty is always idx 0
+@export var indexing := {"" : 0} # empty cell is always idx = 0
 var next_idx := 1
 
 # debug data
@@ -233,18 +236,15 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 		modifies_table_name = StringName(specific_directive_args[modifies_pos])
 	
 	# dictionaries & arrays we'll populate
+	db_prefixes = {}
 	if !is_enumeration:
 		dict_of_field_arrays = {}
 		if !is_wiki_lookup:
-			postprocess_types = {} # indexed by fields
-			default_values = {} # indexed by fields
-			unit_names = {} # indexed by FLOAT fields
+			db_types = {} # indexed by fields
+			db_units = {} # indexed by FLOAT fields
+			db_import_defaults = {} # indexed by fields
 	if has_row_names:
 		row_names = []
-	
-	# temp working dicts
-	var prefixes := {}
-	var raw_defaults := {}
 	
 	var n_cell_rows := cells.size()
 	var n_cell_columns := cells[0].size()
@@ -288,7 +288,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 					assert(line_array[column], "Missing Type in %s, %s, %s" % [path, row, column])
 					var field := column_names[column - 1]
 					debug_pos = "Type header, " + field
-					postprocess_types[field] = _get_postprocess_type(line_array[column])
+					db_types[field] = _get_postprocess_type(line_array[column])
 				has_types = true
 				row += 1
 				continue
@@ -301,7 +301,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
-						unit_names[field] = StringName(line_array[column]) # verify is FLOAT below
+						db_units[field] = StringName(line_array[column]) # verify is FLOAT below
 				row += 1
 				continue
 			
@@ -313,7 +313,7 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
-						raw_defaults[field] = line_array[column] # preprocess below
+						db_import_defaults[field] = _get_value_index(line_array[column])
 				row += 1
 				continue
 			
@@ -322,10 +322,11 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 					assert(line_array[0][6] == "/",
 							"Bad Prefix construction %s in %s, %s" % [line_array[0], path, row])
 					entity_prefix = line_array[0].trim_prefix("Prefix/")
+					db_prefixes[&"name"] = entity_prefix
 				for column: int in skip_column_0_iterator:
 					if line_array[column]: # is non-empty
 						var field := column_names[column - 1]
-						prefixes[field] = line_array[column]
+						db_prefixes[field] = line_array[column]
 				row += 1
 				continue
 			
@@ -333,29 +334,15 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 			n_rows = n_cell_rows - row
 			assert(has_types or is_enumeration or is_wiki_lookup,
 					"Table format requires 'Type' in " + path)
-			for field: StringName in unit_names:
-				var type: int = postprocess_types[field]
+			for field: StringName in db_units:
+				var type: int = db_types[field]
 				assert(type == TYPE_FLOAT or type == TYPE_MAX + TYPE_FLOAT,
 						"Unit specified in field '%s' that is neither FLOAT nor ARRAY[FLOAT]: %s"
 						% [field, path])
 			
-			# preprocess defaults
-			for field: StringName in raw_defaults:
-				var raw_default: String = raw_defaults[field]
-				var prefix: String = prefixes.get(field, "")
-				var postprocess_type: int = postprocess_types[field]
-				debug_pos = "Default header, " + field
-				default_values[field] = _get_preprocess_value(raw_default, postprocess_type, prefix)
-			
 			# init arrays in dictionaries
 			for field in column_names: # none if is_enumeration
-				var preprocess_type: int
-				if !is_wiki_lookup:
-					var postprocess_type: int = postprocess_types[field]
-					preprocess_type = _get_preprocess_type(postprocess_type)
-				else:
-					preprocess_type = TYPE_INT
-				var field_array := Array([], preprocess_type, &"", null)
+				var field_array := Array([], TYPE_INT, &"", null)
 				field_array.resize(n_rows)
 				dict_of_field_arrays[field] = field_array
 		
@@ -383,14 +370,11 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 			var field := column_names[column - 1]
 			var raw_value: String = line_array[column]
 			var preprocess_value: Variant
-			if !raw_value and default_values.has(field):
-				preprocess_value = default_values[field]
+			if !raw_value and db_import_defaults.has(field):
+				preprocess_value = db_import_defaults[field]
 			else:
-				var prefix: String = prefixes.get(field, "")
-				var postprocess_type: int = (TYPE_STRING_NAME if is_wiki_lookup
-						else postprocess_types[field])
 				debug_pos = str(row) + ", " + field
-				preprocess_value = _get_preprocess_value(raw_value, postprocess_type, prefix)
+				preprocess_value = _get_value_index(raw_value)
 			dict_of_field_arrays[field][content_row] = preprocess_value
 		content_row += 1
 		row += 1
@@ -409,8 +393,8 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 	var row_prefix := ""
 	var column_prefix := ""
 	if cells[0][0]:
-		var prefixes: String = cells[0][0]
-		var prefixes_split := prefixes.split("\\")
+		var prefixes_str: String = cells[0][0]
+		var prefixes_split := prefixes_str.split("\\")
 		assert(prefixes_split.size() == 2,
 				"To prefix, use <row prefix>\\<column prefix> in %s, 0, 0" % path)
 		row_prefix = prefixes_split[0]
@@ -421,18 +405,18 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 	assert(type_pos >= 0, "Table format requires @DATA_TYPE in " + path)
 	var raw_type := specific_directive_args[type_pos]
 	debug_pos = "DATA_TYPE"
-	var postprocess_type := _get_postprocess_type(raw_type)
+	exe_type = _get_postprocess_type(raw_type)
 	var raw_default := ""
 	var default_pos := specific_directives.find(TableDirectives.DATA_DEFAULT)
 	if default_pos >= 0:
 		raw_default = specific_directive_args[default_pos]
 	debug_pos = "DATA_DEFAULT"
-	var import_default: Variant = _get_preprocess_value(raw_default, postprocess_type, "")
+	exe_import_default = _get_value_index(raw_default)
 	var unit_pos := specific_directives.find(TableDirectives.DATA_UNIT)
-	var unit_name := &""
+	exe_unit = &""
 	if unit_pos >= 0:
-		assert(postprocess_type == TYPE_FLOAT, "Can't use '@DATA_UNIT' for non-FLOAT in " + path)
-		unit_name = StringName(specific_directive_args[unit_pos])
+		assert(exe_type == TYPE_FLOAT, "Can't use '@DATA_UNIT' for non-FLOAT in " + path)
+		exe_unit = StringName(specific_directive_args[unit_pos])
 	if specific_directives.has(TableDirectives.TRANSPOSE):
 		var swap_prefix := row_prefix
 		row_prefix = column_prefix
@@ -476,17 +460,14 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 		row_names[row - 1] = StringName(row_prefix + line_array[0])
 		for column: int in skip_column_0_iterator:
 			var raw_value := line_array[column]
-			var preprocess_value: Variant
+			var preprocess_value: int
 			if raw_value:
 				debug_pos = str(row) + ", " + str(column)
-				preprocess_value = _get_preprocess_value(raw_value, postprocess_type, "")
+				preprocess_value = _get_value_index(raw_value)
 			else:
-				preprocess_value = import_default
+				preprocess_value = exe_import_default
 			array_of_arrays[row - 1][column - 1] = preprocess_value
 		row += 1
-	
-	# set table info
-	enum_x_enum_info = [postprocess_type, unit_name, import_default]
 
 
 func _get_postprocess_type(type_str: StringName) -> int:
@@ -508,59 +489,12 @@ func _get_postprocess_type(type_str: StringName) -> int:
 	return -1
 
 
-func _get_preprocess_type(postprocess_type: int) -> int:
-	if postprocess_type == TYPE_FLOAT:
-		return TYPE_STRING
-	if postprocess_type >= TYPE_MAX:
-		return TYPE_ARRAY
-	return TYPE_INT
-
-
-func _get_preprocess_value(value: String, postprocess_type: int, prefix: String) -> Variant:
-	# Return is appropriate 'preprocess' type.
-	
-	match postprocess_type:
-		TYPE_BOOL:
-			if value == "x" or value.matchn("true"):
-				return 1
-			assert(value == "" or value.matchn("false"),
-					"Unknown BOOL content '%s' in %s, %s" % [value, path, debug_pos])
-			return 0
-		
-		TYPE_FLOAT:
-			# We have float constants and may need to calculate precision.
-			# The postprocessor does everything here.
-			return value
-		
-		TYPE_STRING, TYPE_STRING_NAME, TYPE_INT:
-			# Index all text types and INTs. INTs are usually enumerations.
-			if value == "":
-				return 0
-			if prefix:
-				return _get_str_index(prefix + value)
-			return _get_str_index(value)
-	
-	if postprocess_type >= TYPE_MAX: # value encodes an array
-		var content_type := postprocess_type - TYPE_MAX
-		assert(content_type < TYPE_MAX, "Nested array type? " + path)
-		assert(content_type != TYPE_ARRAY, "Nested array type? " + path)
-		var content_import_type := _get_preprocess_type(content_type)
-		var result_array := Array([], content_import_type, &"", null)
-		if !value:
-			return result_array
-		var raw_array := value.split(",")
-		for raw_element in raw_array:
-			result_array.append(_get_preprocess_value(raw_element, content_type, prefix))
-		return result_array
-	
-	assert(false, "Missing or unknown type '%s' in %s, %s" % [postprocess_type, path, debug_pos])
-	return null
-
-
-func _get_str_index(value: String) -> int:
-	var idx: int = str_indexing.get(value, -1)
+func _get_value_index(value: String) -> int:
+	if !value:
+		return 0 # empty is most common value
+	var idx: int = indexing.get(value, -1)
 	if idx == -1:
 		idx = next_idx
-		str_indexing[value] = idx
+		indexing[value] = idx
 		next_idx += 1
 	return idx

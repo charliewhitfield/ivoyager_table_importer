@@ -287,11 +287,12 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 	var column_names := table_res.column_names
 	var row_names := table_res.row_names
 	var dict_of_field_arrays := table_res.dict_of_field_arrays
-	var postprocess_types := table_res.postprocess_types
-	var import_defaults := table_res.default_values
-	var unit_names := table_res.unit_names
+	var prefixes := table_res.db_prefixes
+	var types := table_res.db_types
+	var import_defaults := table_res.db_import_defaults
+	var units := table_res.db_units
 	var n_rows := table_res.n_rows
-	var str_array := _get_str_unindexing(table_res.str_indexing)
+	var unindexing := _get_unindexing(table_res.indexing)
 	
 	var defaults := {} # need for table mods
 	
@@ -303,19 +304,23 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 	for field in column_names:
 		var import_field: Array = dict_of_field_arrays[field]
 		assert(n_rows == import_field.size())
-		var type: int = postprocess_types[field]
-		var unit: StringName = unit_names.get(field, &"")
+		var prefix: String = prefixes.get(field, "")
+		var type: int = types[field]
+		var unit: StringName = units.get(field, &"")
 		var field_type := type if type < TYPE_MAX else TYPE_ARRAY
 		var new_field := Array([], field_type, &"", null)
 		new_field.resize(n_rows)
 		for row in n_rows:
-			new_field[row] = _get_postprocess_value(import_field[row], type, unit, str_array)
+			var import_idx: int = import_field[row]
+			var import_str: String = unindexing[import_idx]
+			new_field[row] = _get_postprocess_value(import_str, prefix, type, unit)
 			_count += 1
 		table_dict[field] = new_field
 		# keep table default (temporarly) in case this table is modified
 		if has_entity_names:
-			var import_default: Variant = import_defaults.get(field) # null ok
-			var default: Variant = _get_postprocess_value(import_default, type, unit, str_array)
+			var import_default_idx: int = import_defaults.get(field, 0)
+			var import_default_str: String = unindexing[import_default_idx]
+			var default: Variant = _get_postprocess_value(import_default_str, prefix, type, unit)
 			defaults[field] = default
 		# wiki
 		if field == localized_wiki:
@@ -331,7 +336,13 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 			var precisions_field := Array([], TYPE_INT, &"", null)
 			precisions_field.resize(n_rows)
 			for row in n_rows:
-				var float_string: String = import_field[row]
+				
+				
+				var index: int = import_field[row]
+				var float_string: String = unindexing[index]
+				
+				
+				#var float_string: String = import_field[row]
 				precisions_field[row] = _get_float_str_precision(float_string)
 			_precisions[table_name][field] = precisions_field
 	
@@ -359,23 +370,27 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 	var mod_column_names := table_res.column_names
 	var mod_row_names := table_res.row_names
 	var mod_dict_of_field_arrays := table_res.dict_of_field_arrays
-	var mod_postprocess_types := table_res.postprocess_types
-	var mod_default_values := table_res.default_values
-	var mod_unit_names := table_res.unit_names
+	var mod_prefixes := table_res.db_prefixes
+	var mod_types := table_res.db_types
+	var mod_import_defaults := table_res.db_import_defaults
+	var mod_units := table_res.db_units
 	var mod_n_rows := table_res.n_rows
 	var precisions_dict: Dictionary
 	if _enable_precisions:
 		precisions_dict = _precisions[modifies_table_name]
-	var str_array := _get_str_unindexing(table_res.str_indexing)
+	var unindexing := _get_unindexing(table_res.indexing)
 	
 	# add new fields (if any) to existing table; default-impute existing rows
 	for field in mod_column_names:
 		if table_dict.has(field):
 			continue
-		var type: int = mod_postprocess_types[field]
-		var unit: StringName = mod_unit_names.get(field, &"")
-		var import_default: Variant = mod_default_values.get(field) # null ok
-		var postprocess_default: Variant = _get_postprocess_value(import_default, type, unit, str_array)
+		var prefix: String = mod_prefixes.get(field, "")
+		var type: int = mod_types[field]
+		var unit: StringName = mod_units.get(field, &"")
+		var import_default_idx: int = mod_import_defaults.get(field, 0)
+		var import_default_str: String = unindexing[import_default_idx]
+		var postprocess_default: Variant = _get_postprocess_value(import_default_str, prefix, type,
+				unit)
 		var field_type := type if type < TYPE_MAX else TYPE_ARRAY
 		var new_field := Array([], field_type, &"", null)
 		new_field.resize(n_rows)
@@ -417,10 +432,15 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 		var entity_name := mod_row_names[mod_row]
 		var row: int = entity_enumeration[entity_name]
 		for field in mod_column_names:
-			var type: int = mod_postprocess_types[field]
-			var unit: StringName = mod_unit_names.get(field, &"")
-			var import_value: Variant = mod_dict_of_field_arrays[field][mod_row]
-			table_dict[field][row] = _get_postprocess_value(import_value, type, unit, str_array)
+			var prefix: String = mod_prefixes.get(field, "")
+			var type: int = mod_types[field]
+			var unit: StringName = mod_units.get(field, &"")
+			var import_idx: int = mod_dict_of_field_arrays[field][mod_row]
+			
+			# FIXME: Don't overwrite if 0?
+			
+			var import_str: String = unindexing[import_idx]
+			table_dict[field][row] = _get_postprocess_value(import_str, prefix, type, unit)
 			_count += 1
 	
 	# add/overwrite wiki lookup
@@ -429,16 +449,17 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 			if field != localized_wiki:
 				continue
 			for mod_row in mod_n_rows:
-				var import_value: int = mod_dict_of_field_arrays[field][mod_row]
-				if import_value: # 0 is empty
-					var row_name := mod_row_names[mod_row]
-					_wiki_lookup[row_name] = _get_postprocess_value(import_value, TYPE_STRING_NAME,
-							&"", str_array)
+				var import_idx: int = mod_dict_of_field_arrays[field][mod_row]
+				if !import_idx: # 0 is empty
+					continue
+				var import_str: String = unindexing[import_idx]
+				var row_name := mod_row_names[mod_row]
+				_wiki_lookup[row_name] = _get_postprocess_value(import_str, "", TYPE_STRING_NAME, &"")
 	
 	# add/overwrite precisions
 	if _enable_precisions:
 		for field in mod_column_names:
-			if mod_postprocess_types[field] != TYPE_FLOAT:
+			if mod_types[field] != TYPE_FLOAT:
 				continue
 #			var mod_precisions_array: Array[int] = mod_precisions[field]
 			var precisions_array: Array[int] = precisions_dict[field]
@@ -455,15 +476,16 @@ func _postprocess_wiki_lookup(table_res: TableResource) -> void:
 		return
 	var row_names := table_res.row_names
 	var wiki_field: Array[int] = table_res.dict_of_field_arrays[localized_wiki]
-	var str_array := _get_str_unindexing(table_res.str_indexing)
+	var unindexing := _get_unindexing(table_res.indexing)
 	
 	for row in table_res.row_names.size():
 		var row_name := row_names[row]
-		var import_value := wiki_field[row]
-		if import_value:
-			_wiki_lookup[row_name] = _get_postprocess_value(import_value, TYPE_STRING,
-					&"", str_array)
-			_count += 1
+		var import_idx := wiki_field[row]
+		if !import_idx:
+			continue
+		var import_str: String = unindexing[import_idx]
+		_wiki_lookup[row_name] = _get_postprocess_value(import_str, "", TYPE_STRING, &"")
+		_count += 1
 
 
 func _postprocess_enum_x_enum(table_res: TableResource) -> void:
@@ -474,13 +496,14 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 	var n_import_rows := table_res.n_rows
 	var n_import_columns:= table_res.n_columns
 	var import_array_of_arrays := table_res.array_of_arrays
-	var type: int = table_res.enum_x_enum_info[0]
-	var unit: StringName = table_res.enum_x_enum_info[1]
-	var import_default: Variant = table_res.enum_x_enum_info[2]
-	var str_array := _get_str_unindexing(table_res.str_indexing)
+	var type: int = table_res.exe_type
+	var unit: StringName = table_res.exe_unit
+	var import_default_idx: int = table_res.exe_import_default
+	var unindexing := _get_unindexing(table_res.indexing)
 	
 	var row_type := type if type < TYPE_MAX else TYPE_ARRAY
-	var postprocess_default: Variant = _get_postprocess_value(import_default, type, unit, str_array)
+	var import_default_str: String = unindexing[import_default_idx]
+	var postprocess_default: Variant = _get_postprocess_value(import_default_str, "", type, unit)
 	
 	assert(_enumeration_dicts.has(row_names[0]), "Unknown enumeration " + row_names[0])
 	assert(_enumeration_dicts.has(column_names[0]), "Unknown enumeration " + column_names[0])
@@ -505,41 +528,48 @@ func _postprocess_enum_x_enum(table_res: TableResource) -> void:
 		for import_column in n_import_columns:
 			var column_name := column_names[import_column]
 			var column: int = column_enumeration[column_name]
-			var import_value: Variant = import_array_of_arrays[import_row][import_column]
-			var postprocess_value: Variant = _get_postprocess_value(import_value, type, unit,
-					str_array)
+			var import_idx: int = import_array_of_arrays[import_row][import_column]
+			if !import_idx:
+				continue
+			var import_str: String = unindexing[import_idx]
+			var postprocess_value: Variant = _get_postprocess_value(import_str, "", type, unit)
 			_count += 1
 			table_array_of_arrays[row][column] = postprocess_value
 	
 	_tables[table_name] = table_array_of_arrays
 
 
-func _get_str_unindexing(str_indexing: Dictionary) -> Array[String]:
-	var str_array: Array[String] = []
-	str_array.resize(str_indexing.size())
-	for string: String in str_indexing:
-		var idx: int = str_indexing[string]
-		str_array[idx] = string
-	return str_array
+func _get_unindexing(indexing: Dictionary) -> Array[String]:
+	var unindexing: Array[String] = []
+	unindexing.resize(indexing.size())
+	for string: String in indexing:
+		var idx: int = indexing[string]
+		unindexing[idx] = string
+	return unindexing
 
 
-func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
-		str_array: Array[String]) -> Variant:
-	# appropriately handles import_value == null
+func _get_postprocess_value(import_str: String, prefix: String, type: int, unit: StringName
+		) -> Variant:
 	
+	#if prefix and import_str: # we don't prefix an empty cell!
+		#import_str = prefix + import_str
+	
+
 	if type == TYPE_BOOL:
-		if import_value == null:
+		assert(!prefix, "Prefix set for BOOL data")
+		if import_str == "x" or import_str.matchn("true"):
+			return true
+		else:
+			assert(import_str == "" or import_str.matchn("false"),
+					"Unknown BOOL content '%s'" % import_str)
 			return false
-		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
-		var import_int: int = import_value
-		return bool(import_int) # 0 or 1
 	
 	if type == TYPE_FLOAT:
-		if import_value == null:
+		assert(!prefix, "Prefix set for FLOAT data")
+		if !import_str:
 			return NAN
-		assert(typeof(import_value) == TYPE_STRING, "Unexpected import data type")
-		var import_str: String = import_value
-		
+			
+		# WIP: float_constant -> table_constant
 		if _float_constants.has(import_str):
 			return _float_constants[import_str] # constants are not unit converted!
 		
@@ -564,28 +594,26 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 		return import_float
 	
 	if type == TYPE_STRING:
-		if import_value == null:
+		if !import_str:
 			return ""
-		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
-		var import_str := str_array[import_value]
+		if prefix:
+			import_str = prefix + import_str
 		import_str = import_str.c_unescape() # does not process '\uXXXX'
 		import_str = c_unescape_patch(import_str)
 		return import_str
 	
 	if type == TYPE_STRING_NAME:
-		if import_value == null:
+		if !import_str:
 			return &""
-		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
-		var import_str := str_array[import_value]
+		if prefix:
+			import_str = prefix + import_str
 		return StringName(import_str)
 	
 	if type == TYPE_INT: # imported as StringName for enumerations
-		if import_value == null:
+		if !import_str:
 			return -1
-		assert(typeof(import_value) == TYPE_INT, "Unexpected import data type")
-		var import_str := str_array[import_value]
-		if import_str == "":
-			return -1
+		if prefix:
+			import_str = prefix + import_str
 		if import_str.is_valid_int():
 			return import_str.to_int()
 		assert(_enumerations.has(import_str), "Unknown enumeration " + import_str)
@@ -593,16 +621,13 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 	
 	if type >= TYPE_MAX:
 		var array_type := type - TYPE_MAX
+		assert(array_type < TYPE_MAX and array_type != TYPE_ARRAY, "Nested array not allowed")
 		var array := Array([], array_type, &"", null)
-		if import_value == null:
+		if !import_str:
 			return array # empty typed array
-		assert(typeof(import_value) == TYPE_ARRAY, "Unexpected import data type")
-		@warning_ignore("unsafe_cast")
-		var import_array := import_value as Array
-		var size := import_array.size()
-		array.resize(size)
-		for i in size:
-			array[i] = _get_postprocess_value(import_array[i], array_type, unit, str_array)
+		var import_array := import_str.split(",")
+		for import_element in import_array:
+			array.append(_get_postprocess_value(import_element, prefix, array_type, unit))
 		return array
 	
 	assert(false, "Unsupported type %s" % type)
@@ -619,7 +644,7 @@ func _get_float_str_precision(float_str: String) -> int:
 		if is_nan(float_value) or is_inf(float_value):
 			return -1
 		# There's no way to know precision of a constant. Only astronomy geeks
-		# are using precision anyway, so they should figure this out. Return
+		# are using precision anyway, so this shouldn't be an issue. Return
 		# a 3 so something shows up in GUI.
 		return 3
 	if float_str.begins_with("~"):
