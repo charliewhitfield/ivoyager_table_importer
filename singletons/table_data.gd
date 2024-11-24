@@ -50,15 +50,18 @@ var table_postprocessor := TablePostprocessor.new() # will be nulled after use
 
 
 func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wiki := false,
-		enable_precisions := false) -> void:
+		enable_precisions := false, float_constants := {}) -> void:
 	# Call this function once to populate dictionaries with postprocessed table
 	# data. All containers are set to read-only. See comments in units.gd to
 	# change float conversion units.
+	# User supplied 'float_constants' is merged with an existing dictionary containing
+	# a few hard-coded key/value pairs; see '_float_constants' in table_postprocessor.gd.
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
+	# TODO Godot 4.4: Key/value type the float_constants dictionary.
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables,
 			enumerations, enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes,
-			wiki_lookup, precisions, enable_wiki, enable_precisions)
+			wiki_lookup, precisions, enable_wiki, enable_precisions, float_constants)
 	table_postprocessor = null
 
 

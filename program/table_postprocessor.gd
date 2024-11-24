@@ -57,6 +57,18 @@ var _precisions: Dictionary # populated if enable_precisions (indexed as tables 
 var _enable_wiki: bool
 var _enable_precisions: bool
 
+var _float_constants := { # user supplied is merged w/ overwrite = false
+	&"" : NAN,
+	&"NAN" : NAN,
+	&"nan" : NAN,
+	&"?" : INF,
+	&"INF" : INF,
+	&"inf" : INF,
+	&"-?" : -INF,
+	&"-INF" : -INF,
+	&"-inf" : -INF,
+}
+
 var _table_defaults := {} # only tables that might be modified
 
 var _modding_table_resources: Dictionary
@@ -75,7 +87,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary, enable_wiki: bool, enable_precisions: bool,
-		) -> void:
+		float_constants: Dictionary) -> void:
 	# Called by IVTableData.
 	
 	_start_msec = Time.get_ticks_msec()
@@ -91,6 +103,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	_precisions = precisions
 	_enable_wiki = enable_wiki
 	_enable_precisions = enable_precisions
+	_float_constants.merge(float_constants)
 	
 	var table_resources: Array[TableResource] = []
 	for path in table_file_paths:
@@ -526,16 +539,26 @@ func _get_postprocess_value(import_value: Variant, type: int, unit: StringName,
 			return NAN
 		assert(typeof(import_value) == TYPE_STRING, "Unexpected import data type")
 		var import_str: String = import_value
-		if import_str == "":
-			return NAN
-		if import_str == "?":
-			return INF
-		if import_str == "-?":
-			return -INF
+		
+		if _float_constants.has(import_str):
+			return _float_constants[import_str] # constants are not unit converted!
+		
 		var unit_split := import_str.split(" ", false, 1)
+		if unit_split.size() == 1:
+			# Possible "x/unit" needs conversion to "x 1/unit"
+			unit_split = import_str.split("/", false, 1)
+			if unit_split.size() == 2:
+				unit_split[1] = "1/" + unit_split[1]
 		if unit_split.size() == 2:
 			unit = StringName(unit_split[1]) # overrides column unit!
-		var import_float := unit_split[0].lstrip("~").to_float()
+		
+		var float_str := unit_split[0].lstrip("~").replace("E", "e").replace("_", "").replace(",", "")
+		assert(float_str.is_valid_float(), 
+				"Invalid FLOAT! Before / after postprocessing: '%s' / '%s'" % [
+				unit_split[0], float_str])
+		
+		var import_float := float_str.to_float()
+		#var import_float := unit_split[0].lstrip("~").to_float()
 		if unit:
 			return IVQConvert.convert_quantity(import_float, unit, true, true)
 		return import_float
@@ -591,14 +614,24 @@ func _get_float_str_precision(float_str: String) -> int:
 	# We ignore an inline unit, if present.
 	# We ignore leading zeroes.
 	# We count trailing zeroes IF AND ONLY IF the number has a decimal place.
-	match float_str:
-		"", "?", "-?":
+	if _float_constants.has(float_str):
+		var float_value: float = _float_constants[float_str]
+		if is_nan(float_value) or is_inf(float_value):
 			return -1
+		# There's no way to know precision of a constant. Only astronomy geeks
+		# are using precision anyway, so they should figure this out. Return
+		# a 3 so something shows up in GUI.
+		return 3
 	if float_str.begins_with("~"):
-		return 0
+		return 0 # in Planetarium GUI we display these as, e.g., '~1 km'
+	
+	# replicate postprocessing string changes
 	var unit_split := float_str.split(" ", false, 1)
-	if unit_split.size() == 2:
-		float_str = unit_split[0]
+	unit_split = unit_split[0].split("/", false, 1)
+	float_str = unit_split[0]
+	float_str = float_str.replace("E", "e").replace("_", "").replace(",", "")
+	
+	# calculate precision
 	var length := float_str.length()
 	var n_digits := 0
 	var started := false

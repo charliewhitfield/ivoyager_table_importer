@@ -22,7 +22,7 @@ extends Resource
 
 # The imported resource only needs to be loaded for data postprocessing by
 # table_postprocessor.gd. After that, all processed table data is available in
-# autoload singleton 'IVTableData' (table_data.gd). The resources are
+# autoload singleton 'IVTableData' (singletons/table_data.gd). The resources are
 # de-referenced so they free themselves and go out of memory.
 #
 # Data here is preprocessed for compactness and for the needs of the
@@ -504,7 +504,7 @@ func _get_postprocess_type(type_str: StringName) -> int:
 	if type_str.begins_with("ARRAY[") and type_str.ends_with("]"):
 		var array_type := _get_postprocess_type(type_str.trim_prefix("ARRAY[").trim_suffix("]"))
 		return TYPE_MAX + array_type
-	assert(false, "Missing or unknown table Type '%s' in %s, %s" % [type_str, path, debug_pos])
+	assert(false, "Missing or unsupported table Type '%s' in %s, %s" % [type_str, path, debug_pos])
 	return -1
 
 
@@ -528,36 +528,12 @@ func _get_preprocess_value(value: String, postprocess_type: int, prefix: String)
 			return 0
 		
 		TYPE_FLOAT:
-			# A few special values (including blank) are converted to "", "?"
-			# or "-?", which stand in for NAN, INF and -INF. Anything after a
-			# space is assumed to be an inline unit. We do some light pre-
-			# processing of the value and inline unit (if any) here and store
-			# as string for the postprocessor.
-			if value == "" or value.matchn("nan"):
-				return ""
-			if value == "?" or value.matchn("inf"):
-				return "?"
-			if value == "-?" or value.matchn("-inf"):
-				return "-?"
-			# Possible inline unit. Convert "x/unit" to "x 1/unit" so we don't
-			# have to test in postprocess.
-			var inline_unit := ""
-			var unit_split := value.split(" ", false, 1)
-			if unit_split.size() == 2:
-				value = unit_split[0]
-				inline_unit = " " + unit_split[1]
-			else:
-				unit_split = value.split("/", false, 1)
-				if unit_split.size() == 2:
-					value = unit_split[0]
-					inline_unit = " 1/" + unit_split[1] # postprocessor expects " " + unit
-			value = value.replace("E", "e").replace("_", "").replace(",", "")
-			assert(value.lstrip("~").is_valid_float(), "Invalid float '%s' in %s, %s" % [value,
-					path, debug_pos])
-			return value + inline_unit
+			# We have float constants and may need to calculate precision.
+			# The postprocessor does everything here.
+			return value
 		
 		TYPE_STRING, TYPE_STRING_NAME, TYPE_INT:
-			# Index all text types; INTs are often enumerations.
+			# Index all text types and INTs. INTs are usually enumerations.
 			if value == "":
 				return 0
 			if prefix:
