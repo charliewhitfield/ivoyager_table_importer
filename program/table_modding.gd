@@ -61,17 +61,16 @@ To mod:
   * Open the copied file's properties and unset attribute 'Read-only'.
   * Mod away!
 
-Don't modify files in THIS directory (modding/base_files/). If files are
-are modified or moved by accident, delete the whole directory to force an
-update.
+Don't modify files in THIS directory (modding/base_files/). To force an update
+of base files, delete the version.cfg file or the whole base_files directory.
 
 WARNING! Bad mod data may cause errors or crash the application. To recover,
 delete the problematic file(s) in modding/mod_files or delete the whole
-directory.
+mod_files directory.
 
 Note: Most csv/tsv editors will change data without warning and without any
-reasonable way to prevent it (e.g., "reformatting" text if it looks vaguely
-like a date, truncating high-precision numbers, etc.). One editor that does
+reasonable way to prevent it, e.g., "reformatting" text if it looks vaguely
+like a date, truncating high-precision numbers, etc. One editor that does
 not do this is Rons Data Edit: https://www.ronsplace.ca/products/ronsdataedit.
 """
 
@@ -105,65 +104,41 @@ func _init(version := "",
 		_base_files_readme_text = base_files_readme_text
 
 
-## Use this function to do everything or call other functions individually.
-## All tables can be specified in 'table_names' if you don't need subdirectories.
-## Files specified in 'additional_file_original_paths' will be added to
-## modding_base_files_dir and updated in parallel with table files.
-## 'additional_file_base_paths' can optionally be supplied if you want additional
-## files to be placed in subdirectories.
-func process_modding_tables_and_files(original_table_paths: Array, table_names := [],
-		table_base_paths := [], additional_file_original_paths := [],
-		additional_file_base_paths := []) -> void:
-	populate_project_unimported_dir(original_table_paths, table_names, table_base_paths,
-			additional_file_original_paths)
+## This function wraps three other functions to set up modding base files and
+## update them only when not present or not current for the user. File
+## names in 'source_paths' and 'relative_base_file_paths' should be the same.
+## Adds base files to 'modding_base_files_dir' at specified relative paths. If
+## no subdirectories are needed, then 'relative_base_file_paths' is just an
+## array of file names. 
+func process_base_files(source_paths: Array, relative_base_file_paths: Array) -> void:
+	populate_project_unimported_dir(source_paths) # editor run only
 	if !is_modding_base_files_current():
-		add_modding_base_files(table_names, table_base_paths, additional_file_original_paths,
-				additional_file_base_paths)
-	import_modding_mod_files_tables(table_names, table_base_paths)
+		add_modding_base_files(relative_base_file_paths)
 
 
-## Tables can be specified in either 'table_names' or 'table_base_paths'
-## ('table_base_paths' is used in this function only to extract table names).
-## Additional files can be specified by path in 'additional_file_original_paths'.
-## Asserts if any duplicate file names occur.
-## This function only runs in the editor; it does nothing in an exported project.
-func populate_project_unimported_dir(original_table_paths: Array, table_names := [],
-		table_base_paths := [], additional_file_original_paths := []) -> void:
+## In editor run, this function copies modding files to 'project_unimported_dir'
+## with '.unimported' extension to protect them from Godot import. This is
+## needed to set up modding base files. Use process_base_files() instead to do
+## all base file handling in one function call.
+func populate_project_unimported_dir(source_paths: Array) -> void:
 	
 	if !OS.has_feature("editor"):
 		return
 	
 	DirAccess.make_dir_recursive_absolute(_project_unimported_dir)
 	_remove_files_recursive(_project_unimported_dir, "unimported")
-	
-	# start with original paths for 'additional files'
-	var original_paths := additional_file_original_paths.duplicate()
-	# then append table original paths, which we have to find
-	for name: String in table_names:
-		var original_path := _get_original_table_path(name, original_table_paths)
-		assert(original_path, "Did not find original path for table %s" % name)
-		original_paths.append(original_path)
-	for table_base_path: String in table_base_paths:
-		var name := table_base_path.get_basename().get_file()
-		var original_path := _get_original_table_path(name, original_table_paths)
-		assert(original_path, "Did not find original path for table %s" % name)
-		original_paths.append(original_path)
-	
-	# Copy from original path to unimported directory w/ added .unimported extension.
-	# Note that DirAccess.copy_absolute()
-	# only seems to work in editor run (as of Godot 4.3), but that's ok here.
-	# Also test and assert duplicate file names.
-	var file_names := []
-	for original_path: String in original_paths:
-		var file_name := original_path.get_file()
+	var file_names := [] # for duplication assert
+	for source_path: String in source_paths:
+		var file_name := source_path.get_file()
 		assert(!file_names.has(file_name), "Attempt to add duplicate file name for modding")
 		file_names.append(file_name)
-		var copy_path := _project_unimported_dir.path_join(file_name + ".unimported")
-		var err := DirAccess.copy_absolute(original_path, copy_path)
+		var to_path := _project_unimported_dir.path_join(file_name + ".unimported")
+		var err := DirAccess.copy_absolute(source_path, to_path) # only works in editor? ok here
 		assert(err == OK)
 
 
-## Uses 'version' specified at _init().
+## Uses 'version' specified at _init() to test whether the user's modding base
+## files are current.
 func is_modding_base_files_current() -> bool:
 	if !_version:
 		return false
@@ -175,43 +150,32 @@ func is_modding_base_files_current() -> bool:
 	return existing_version == _version
 
 
-## Specify tables in either 'table_names' or 'table_base_paths'. Use the latter if
-## you need to specify a destination different than 'modding_base_files_dir'.
-## Table names are always the same as the file base names in the paths.
-## 'additional_file_original_paths' should be the same supplied in
-## populate_project_unimported_dir().
-func add_modding_base_files(table_names := [], table_base_paths := [],
-		additional_file_original_paths := [], additional_file_base_paths := []) -> void:
-	_remove_files_recursive(_modding_base_files_dir, "")
-	# destination paths for tables
-	var base_paths := table_base_paths.duplicate()
-	for table_name: String in table_names:
-		var path := _modding_base_files_dir.path_join(table_name + ".tsv")
-		base_paths.append(path)
-	# destination paths for additional files
-	base_paths.append_array(additional_file_base_paths)
-	for additional_file_original_path: String in additional_file_original_paths:
-		var file_name := additional_file_original_path.get_file()
-		if !_is_file_in_paths_array(file_name, additional_file_base_paths):
-			var path := _modding_base_files_dir.path_join(file_name)
-			base_paths.append(path)
+## Adds base files to 'modding_base_files_dir' using relative paths specified in
+## 'relative_base_file_paths'. If no subdirectories are needed, then these are
+## file names only. This function only works if populate_project_unimported_dir()
+## was already called. Use process_base_files() instead to do all base file
+## handling in one function call.
+func add_modding_base_files(relative_base_file_paths: Array) -> void:
 	
-	# copy from unimported to modding/base_files
-	for base_path: String in base_paths:
+	_remove_files_recursive(_modding_base_files_dir, "")
+	
+	# copy from _project_unimported_dir to _modding_base_files_dir at relative path
+	for relative_path: String in relative_base_file_paths:
+		var base_path := _modding_base_files_dir.path_join(relative_path)
 		if FileAccess.file_exists(base_path):
 			FileAccess.set_read_only_attribute(base_path, false) # allows overwrite
 		else:
 			var base_dir := base_path.get_base_dir()
 			DirAccess.make_dir_recursive_absolute(base_dir)
-		var file_name := base_path.get_file()
-		var source_path := _project_unimported_dir.path_join(file_name + ".unimported")
+		var file_name := relative_path.get_file()
+		var unimported_path := _project_unimported_dir.path_join(file_name + ".unimported")
 		
-		# Godot 4.3 ISSUE: DirAccess.copy_absolute(source_path, path) fails
+		# Godot 4.3 ISSUE: DirAccess.copy_absolute(unimported_path, base_path) fails
 		# with read error in export project, even though below works...
-		var source_file := FileAccess.open(source_path, FileAccess.READ)
-		var source_content := source_file.get_as_text()
+		var unimported_file := FileAccess.open(unimported_path, FileAccess.READ)
+		var content := unimported_file.get_as_text()
 		var write_file := FileAccess.open(base_path, FileAccess.WRITE)
-		write_file.store_string(source_content)
+		write_file.store_string(content)
 		
 		FileAccess.set_read_only_attribute(base_path, true)
 	
@@ -225,25 +189,20 @@ func add_modding_base_files(table_names := [], table_base_paths := [],
 	version_config.save(_modding_base_files_dir.path_join("version.cfg"))
 
 
-## Tables can be specified in either 'table_names' or 'table_base_paths'
-## ('table_base_paths' is used in this function only to extract table names).
 ## Subdirectory nesting structure doesn't matter at all to this function. User
-## might parallel modding/base_files subdirectories (if they are present), but
-## they don't have to.
-func import_modding_mod_files_tables(table_names := [], table_base_paths := []) -> void:
+## might parallel modding/base_files subdirectories (if present), but they don't
+## have to.
+func import_mod_tables(table_names: Array) -> void:
+	
 	var mod_table_paths := {}
 	if DirAccess.dir_exists_absolute(_modding_mod_files_dir):
 		_add_table_paths_recursive(_modding_mod_files_dir, mod_table_paths)
 	if !mod_table_paths:
 		return # no mod tables!
 	
-	var modded_tables: Array[String] = []
+	var modded_tables: Array[String] = [] # for print only
 	var modding_table_resources := {}
-	var names := table_names.duplicate()
-	for path: String in table_base_paths:
-		var name := path.get_basename().get_file()
-		names.append(name)
-	for name: String in names:
+	for name: String in table_names:
 		if !mod_table_paths.has(name):
 			continue
 		var path: String = mod_table_paths[name]
