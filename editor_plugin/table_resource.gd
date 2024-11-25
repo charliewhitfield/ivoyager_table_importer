@@ -482,8 +482,13 @@ func _get_postprocess_type(type_str: StringName) -> int:
 		return TYPE_STRING
 	if type_str == &"STRING_NAME":
 		return TYPE_STRING_NAME
+	if type_str == &"VECTOR3":
+		return TYPE_VECTOR3
+	if type_str == &"COLOR":
+		return TYPE_COLOR
 	if type_str.begins_with("ARRAY[") and type_str.ends_with("]"):
 		var array_type := _get_postprocess_type(type_str.trim_prefix("ARRAY[").trim_suffix("]"))
+		assert(array_type < TYPE_MAX, "Nested arrays not allowed")
 		return TYPE_MAX + array_type
 	assert(false, "Missing or unsupported table Type '%s' in %s, %s" % [type_str, path, debug_pos])
 	return -1

@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # *****************************************************************************
+class_name IVTablePostprocessor
 extends RefCounted
 
 
@@ -56,18 +57,8 @@ var _wiki_lookup: Dictionary # populated if enable_wiki
 var _precisions: Dictionary # populated if enable_precisions (indexed as tables for FLOAT fields)
 var _enable_wiki: bool
 var _enable_precisions: bool
-
-var _float_constants := { # user supplied is merged w/ overwrite = false
-	&"" : NAN,
-	&"NAN" : NAN,
-	&"nan" : NAN,
-	&"?" : INF,
-	&"INF" : INF,
-	&"inf" : INF,
-	&"-?" : -INF,
-	&"-INF" : -INF,
-	&"-inf" : -INF,
-}
+var _table_constants: Dictionary
+var _missing_values: Dictionary
 
 var _table_defaults := {} # only tables that might be modified
 
@@ -87,7 +78,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary, enable_wiki: bool, enable_precisions: bool,
-		float_constants: Dictionary) -> void:
+		table_constants: Dictionary, missing_values: Dictionary) -> void:
 	# Called by IVTableData.
 	
 	_start_msec = Time.get_ticks_msec()
@@ -103,7 +94,15 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	_precisions = precisions
 	_enable_wiki = enable_wiki
 	_enable_precisions = enable_precisions
-	_float_constants.merge(float_constants)
+	_table_constants = table_constants
+	_missing_values = missing_values
+	
+	# asserts
+	for key: String in table_constants:
+		var value: Variant = table_constants[key]
+		if typeof(value) == TYPE_INT:
+			assert(!enumerations.has(key))
+	
 	
 	var table_resources: Array[TableResource] = []
 	for path in table_file_paths:
@@ -551,28 +550,26 @@ func _get_unindexing(indexing: Dictionary) -> Array[String]:
 func _get_postprocess_value(import_str: String, prefix: String, type: int, unit: StringName
 		) -> Variant:
 	
-	#if prefix and import_str: # we don't prefix an empty cell!
-		#import_str = prefix + import_str
+	# Table constant is used only if it is an expected type.
+	var constant_value: Variant = _table_constants.get(import_str) # usually null
+	var constant_type := typeof(constant_value)
 	
-
 	if type == TYPE_BOOL:
-		assert(!prefix, "Prefix set for BOOL data")
-		if import_str == "x" or import_str.matchn("true"):
-			return true
-		else:
-			assert(import_str == "" or import_str.matchn("false"),
-					"Unknown BOOL content '%s'" % import_str)
-			return false
+		assert(!prefix, "Prefix not allowed for BOOL")
+		assert(!unit, "Unit not allowed for BOOL")
+		if !import_str:
+			return _missing_values[TYPE_BOOL]
+		if constant_type == TYPE_BOOL:
+			return constant_value
+		assert(false, "Unknown BOOL content '%s'" % import_str)
+		return false
 	
 	if type == TYPE_FLOAT:
-		assert(!prefix, "Prefix set for FLOAT data")
+		assert(!prefix, "Prefix not allowed for FLOAT")
 		if !import_str:
-			return NAN
-			
-		# WIP: float_constant -> table_constant
-		if _float_constants.has(import_str):
-			return _float_constants[import_str] # constants are not unit converted!
-		
+			return _missing_values[TYPE_FLOAT]
+		if constant_type == TYPE_FLOAT:
+			return constant_value # no unit conversion!
 		var unit_split := import_str.split(" ", false, 1)
 		if unit_split.size() == 1:
 			# Possible "x/unit" needs conversion to "x 1/unit"
@@ -581,12 +578,10 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 				unit_split[1] = "1/" + unit_split[1]
 		if unit_split.size() == 2:
 			unit = StringName(unit_split[1]) # overrides column unit!
-		
 		var float_str := unit_split[0].lstrip("~").replace("E", "e").replace("_", "").replace(",", "")
 		assert(float_str.is_valid_float(), 
 				"Invalid FLOAT! Before / after postprocessing: '%s' / '%s'" % [
 				unit_split[0], float_str])
-		
 		var import_float := float_str.to_float()
 		#var import_float := unit_split[0].lstrip("~").to_float()
 		if unit:
@@ -594,8 +589,14 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		return import_float
 	
 	if type == TYPE_STRING:
+		assert(!unit, "Unit not allowed for STRING")
 		if !import_str:
-			return ""
+			return _missing_values[TYPE_STRING]
+		if constant_type == TYPE_STRING:
+			return constant_value # no prefixing!
+		if constant_type == TYPE_STRING_NAME:
+			@warning_ignore("unsafe_call_argument")
+			return String(constant_value) # no prefixing!
 		if prefix:
 			import_str = prefix + import_str
 		import_str = import_str.c_unescape() # does not process '\uXXXX'
@@ -603,15 +604,24 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		return import_str
 	
 	if type == TYPE_STRING_NAME:
+		assert(!unit, "Unit not allowed for STRING_NAME")
 		if !import_str:
-			return &""
+			return _missing_values[TYPE_STRING_NAME]
+		if constant_type == TYPE_STRING_NAME:
+			return constant_value # no prefixing!
+		if constant_type == TYPE_STRING:
+			@warning_ignore("unsafe_call_argument")
+			return StringName(constant_value) # no prefixing!
 		if prefix:
 			import_str = prefix + import_str
 		return StringName(import_str)
 	
 	if type == TYPE_INT: # imported as StringName for enumerations
+		assert(!unit, "Unit not allowed for INT")
 		if !import_str:
-			return -1
+			return _missing_values[TYPE_INT]
+		if constant_type == TYPE_INT:
+			return constant_value # no prefixing or enumeration test (assert above if collision)
 		if prefix:
 			import_str = prefix + import_str
 		if import_str.is_valid_int():
@@ -619,15 +629,65 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		assert(_enumerations.has(import_str), "Unknown enumeration " + import_str)
 		return _enumerations[import_str]
 	
+	# Below types recursively call this function for each element in comma-
+	# separated data. Elements can have type-approprate constants, units, etc.,
+	# exactly like a whole-cell value.
+	
+	# TODO: Add more vector types after this one is tested
+	if type == TYPE_VECTOR3:
+		assert(!prefix, "Prefix not allowed for VECTOR3")
+		if !import_str:
+			return _missing_values[TYPE_VECTOR3]
+		if constant_type == TYPE_VECTOR3:
+			return constant_value
+		var import_split := import_str.split(",")
+		assert(import_split.size() == 3, "Vector3 values must be entered as 'x,x,x'")
+		var vector3 := Vector3()
+		for i in 3:
+			vector3[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
+		return vector3
+	
+	
+	if type == TYPE_COLOR:
+		assert(!prefix, "Prefix not allowed for COLOR")
+		# Unit here is weird but maybe user has a conversion unit?
+		if !import_str:
+			return _missing_values[TYPE_COLOR]
+		if constant_type == TYPE_COLOR:
+			return constant_value
+		var import_split := import_str.split(",")
+		var n_elements := import_split.size()
+		if n_elements <= 2: # string or string,alpha
+			var color_str := import_split[0]
+			var color := Color.from_string(color_str, Color(-INF, -INF, -INF, -INF))
+			assert(color != Color(-INF, -INF, -INF, -INF), "Unknown color string '%s'" % color_str)
+			if n_elements == 1:
+				return color
+			var alpha: float = _get_postprocess_value(import_split[1], "", TYPE_FLOAT, unit)
+			return Color(color, alpha)
+		assert(n_elements <= 4, "Numeric color values must be entered as 'r,g,b' or 'r,g,b,a'")
+		var elements_color := Color()
+		for i in n_elements:
+			elements_color[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
+		return elements_color
+	
+	
 	if type >= TYPE_MAX:
 		var array_type := type - TYPE_MAX
 		assert(array_type < TYPE_MAX and array_type != TYPE_ARRAY, "Nested array not allowed")
+		# Constant OK but it has to have correct element type.
+		if constant_type == TYPE_ARRAY:
+			@warning_ignore("unsafe_cast")
+			if (constant_value as Array).get_typed_builtin() == array_type:
+				return constant_value
 		var array := Array([], array_type, &"", null)
 		if !import_str:
 			return array # empty typed array
-		var import_array := import_str.split(",")
-		for import_element in import_array:
-			array.append(_get_postprocess_value(import_element, prefix, array_type, unit))
+		var import_split := import_str.split(",")
+		var size := import_split.size()
+		array.resize(size)
+		for i in size:
+			array[i] = _get_postprocess_value(import_split[i], prefix, array_type, unit)
 		return array
 	
 	assert(false, "Unsupported type %s" % type)
@@ -639,8 +699,10 @@ func _get_float_str_precision(float_str: String) -> int:
 	# We ignore an inline unit, if present.
 	# We ignore leading zeroes.
 	# We count trailing zeroes IF AND ONLY IF the number has a decimal place.
-	if _float_constants.has(float_str):
-		var float_value: float = _float_constants[float_str]
+	if !float_str:
+		return -1
+	if typeof(_table_constants.get(float_str)) == TYPE_FLOAT:
+		var float_value: float = _table_constants[float_str]
 		if is_nan(float_value) or is_inf(float_value):
 			return -1
 		# There's no way to know precision of a constant. Only astronomy geeks
