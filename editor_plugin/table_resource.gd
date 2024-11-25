@@ -50,6 +50,21 @@ enum TableDirectives {
 	DONT_PARSE, # do nothing (for debugging or under-construction table)
 }
 
+
+## Arrays of any of these types are also supported.
+const SUPPORTED_TYPES := {
+	&"BOOL" : TYPE_BOOL,
+	&"INT" : TYPE_INT,
+	&"FLOAT" : TYPE_FLOAT,
+	&"STRING" : TYPE_STRING,
+	&"STRING_NAME" : TYPE_STRING_NAME,
+	&"VECTOR2" : TYPE_VECTOR2,
+	&"VECTOR3" : TYPE_VECTOR3,
+	&"VECTOR4" : TYPE_VECTOR4,
+	&"COLOR" : TYPE_COLOR,
+}
+
+
 const ALLOWED_SPECIFIC_DIRECTIVES := [
 	# List for each table format (we don't need DONT_PARSE here).
 	[],
@@ -473,25 +488,16 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 
 
 func _get_postprocess_type(type_str: StringName) -> int:
+	
+	if SUPPORTED_TYPES.has(type_str):
+		return SUPPORTED_TYPES[type_str]
+		
 	# Array types are encoded using int values >= TYPE_MAX
-	if type_str == &"FLOAT":
-		return TYPE_FLOAT
-	if type_str == &"BOOL":
-		return TYPE_BOOL
-	if type_str == &"INT":
-		return TYPE_INT
-	if type_str == &"STRING":
-		return TYPE_STRING
-	if type_str == &"STRING_NAME":
-		return TYPE_STRING_NAME
-	if type_str == &"VECTOR3":
-		return TYPE_VECTOR3
-	if type_str == &"COLOR":
-		return TYPE_COLOR
 	if type_str.begins_with("ARRAY[") and type_str.ends_with("]"):
 		var array_type := _get_postprocess_type(type_str.trim_prefix("ARRAY[").trim_suffix("]"))
 		assert(array_type < TYPE_MAX, "Nested arrays not allowed")
 		return TYPE_MAX + array_type
+	
 	assert(false, "Missing or unsupported table Type '%s' in %s, %s" % [type_str, path, debug_pos])
 	return -1
 

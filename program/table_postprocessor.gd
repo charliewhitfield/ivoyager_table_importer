@@ -22,26 +22,8 @@ extends RefCounted
 
 ## Called by [IVTableData] and [IVTableModding]. Don't use this class directly.
 
-# FIXME: class name the resource!
+const TableDirectives := IVTableResource.TableDirectives
 
-enum TableDirectives { # copy from table_resource.gd
-	# table formats
-	DB_ENTITIES,
-	DB_ENTITIES_MOD,
-	DB_ANONYMOUS_ROWS,
-	ENUMERATION,
-	WIKI_LOOKUP,
-	ENUM_X_ENUM,
-	N_FORMATS,
-	# specific directives
-	MODIFIES,
-	DATA_TYPE,
-	DATA_DEFAULT,
-	DATA_UNIT,
-	TRANSPOSE,
-	# any file
-	DONT_PARSE, # do nothing (for debugging or under-construction table)
-}
 
 # TODO: Proper localization. I'm not sure if we're supposed to use get_locale()
 # from OS or TranslationServer, or how to do fallbacks for missing translations.
@@ -68,18 +50,17 @@ var _start_msec: int
 var _count: int
 
 
-
+## Called by IVTableModding. If used, must be called before [method postprocess].
 func set_modding_tables(modding_table_resources: Dictionary) -> void:
-	# Called by IVTableModding. If used, must be called before postprocess().
 	_modding_table_resources = modding_table_resources
 
 
+## Called by IVTableData.
 func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionary],
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary, enable_wiki: bool, enable_precisions: bool,
 		table_constants: Dictionary, missing_values: Dictionary) -> void:
-	# Called by IVTableData.
 	
 	_start_msec = Time.get_ticks_msec()
 	_count = 0
@@ -629,11 +610,24 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		assert(_enumerations.has(import_str), "Unknown enumeration " + import_str)
 		return _enumerations[import_str]
 	
-	# Below types recursively call this function for each element in comma-
-	# separated data. Elements can have type-approprate constants, units, etc.,
-	# exactly like a whole-cell value.
+	# Below types recursively call this function for each element, which are
+	# comma-delimited in table cells. Elements can have type-approprate constants,
+	# units, etc., exactly like whole-cell values.
 	
-	# TODO: Add more vector types after this one is tested
+	if type == TYPE_VECTOR2:
+		assert(!prefix, "Prefix not allowed for VECTOR2")
+		if !import_str:
+			return _missing_values[TYPE_VECTOR2]
+		if constant_type == TYPE_VECTOR2:
+			return constant_value
+		var import_split := import_str.split(",")
+		assert(import_split.size() == 2, "Vector2 values must be entered as 'x,y'")
+		var vector2 := Vector2()
+		for i in 2:
+			vector2[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
+		return vector2
+	
+	
 	if type == TYPE_VECTOR3:
 		assert(!prefix, "Prefix not allowed for VECTOR3")
 		if !import_str:
@@ -641,11 +635,25 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		if constant_type == TYPE_VECTOR3:
 			return constant_value
 		var import_split := import_str.split(",")
-		assert(import_split.size() == 3, "Vector3 values must be entered as 'x,x,x'")
+		assert(import_split.size() == 3, "Vector3 values must be entered as 'x,y,z'")
 		var vector3 := Vector3()
 		for i in 3:
 			vector3[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
 		return vector3
+	
+	
+	if type == TYPE_VECTOR4:
+		assert(!prefix, "Prefix not allowed for VECTOR4")
+		if !import_str:
+			return _missing_values[TYPE_VECTOR4]
+		if constant_type == TYPE_VECTOR4:
+			return constant_value
+		var import_split := import_str.split(",")
+		assert(import_split.size() == 4, "Vector4 values must be entered as 'x,y,z,w'")
+		var vector4 := Vector4()
+		for i in 4:
+			vector4[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
+		return vector4
 	
 	
 	if type == TYPE_COLOR:
@@ -672,6 +680,7 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		return elements_color
 	
 	
+	# Arrays of typed data...
 	if type >= TYPE_MAX:
 		var array_type := type - TYPE_MAX
 		assert(array_type < TYPE_MAX and array_type != TYPE_ARRAY, "Nested array not allowed")

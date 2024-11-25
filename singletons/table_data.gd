@@ -54,7 +54,9 @@ const DEFAULT_MISSING_VALUES := {
 	TYPE_STRING_NAME : &"",
 	TYPE_INT : -1,
 	TYPE_FLOAT : NAN, # Watch out for failed '==' comparisons!
+	TYPE_VECTOR2 : Vector2(-INF, -INF),
 	TYPE_VECTOR3 : Vector3(-INF, -INF, -INF),
+	TYPE_VECTOR4 : Vector4(-INF, -INF, -INF, -INF),
 	TYPE_COLOR : Color(-INF, -INF, -INF, -INF),
 	TYPE_ARRAY : [], # Arrays always have a data type! Don't change this one!
 }
