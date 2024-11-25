@@ -53,7 +53,6 @@ extends RefCounted
 ## 2. Add filter '*.unimported' (or a directory filter if you want) to
 ##    Project/Export/Resources/'Filters to export non-resource files/folders'.
 
-const TableResource := preload("../editor_plugin/table_resource.gd")
 const DEFAULT_BASE_FILES_README_TEXT := """Files are read-only!
 
 To mod:
@@ -208,7 +207,7 @@ func import_mod_tables(table_names: Array) -> void:
 		var path: String = mod_table_paths[name]
 		var file := FileAccess.open(path, FileAccess.READ)
 		assert(file)
-		var table_res := TableResource.new()
+		var table_res := IVTableResource.new()
 		table_res.import_file(file, path)
 		modding_table_resources[name] = table_res
 		modded_tables.append(name)

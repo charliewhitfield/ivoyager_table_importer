@@ -18,16 +18,18 @@
 # limitations under the License.
 # *****************************************************************************
 @tool
+class_name IVTableResource
 extends Resource
 
-# The imported resource only needs to be loaded for data postprocessing by
-# table_postprocessor.gd. After that, all processed table data is available in
-# autoload singleton 'IVTableData' (singletons/table_data.gd). The resources are
-# de-referenced so they free themselves and go out of memory.
-#
-# Data here is preprocessed for compactness and for the needs of the
-# postprocessor. It isn't usefull in its preprocessed form except for table
-# debugging.
+## Resource used by the table importer plugin.
+##
+## The imported resource only needs to be loaded for data postprocessing by
+## [IVTablePostprocessor]. After that, all processed table data is available in
+## autoload singleton [IVTableData]. The resources are
+## de-referenced so they free themselves and go out of memory.
+##
+## Data here is preprocessed for the needs of the postprocessor. It isn't
+## usefull in its preprocessed form except for table debugging.
 
 enum TableDirectives {
 	# table formats

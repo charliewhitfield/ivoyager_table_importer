@@ -34,7 +34,6 @@ extends EditorPlugin
 # in 4.2-beta builds).
 
 const plugin_utils := preload("table_importer_plugin_utils.gd")
-const TableResource := preload("table_resource.gd")
 const EditorImportPluginClass := preload("editor_import_plugin.gd")
 
 var _config: ConfigFile # base config with overrides
@@ -51,7 +50,7 @@ func _enter_tree() -> void:
 			"res://ivoyager_override.cfg", "res://ivoyager_override2.cfg")
 	if !_config:
 		return
-	add_custom_type("IVTableResource", "Resource", TableResource, _get_table_resource_icon())
+	add_custom_type("IVTableResource", "Resource", IVTableResource, _get_table_resource_icon())
 	_editor_import_plugin = EditorImportPluginClass.new()
 	add_import_plugin(_editor_import_plugin)
 	_add_autoloads()

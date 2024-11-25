@@ -137,7 +137,7 @@ var _is_missing_float_nan := true
 
 ## Call this function once to populate dictionaries with postprocessed table
 ## data. All containers are set to read-only. See comments in units.gd to
-## change float conversion units.
+## change float conversion units. 
 ## Dictionary 'table_constants' can contain values of any type; it
 ## is merged with an existing dictionary.
 ## WARNING: Changing 'missing_values' should work for most types but has not been tested.

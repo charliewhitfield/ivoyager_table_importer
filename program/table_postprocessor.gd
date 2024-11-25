@@ -20,6 +20,9 @@
 class_name IVTablePostprocessor
 extends RefCounted
 
+## Called by [IVTableData] and [IVTableModding]. Don't use this class directly.
+
+# FIXME: class name the resource!
 
 enum TableDirectives { # copy from table_resource.gd
 	# table formats
@@ -39,9 +42,6 @@ enum TableDirectives { # copy from table_resource.gd
 	# any file
 	DONT_PARSE, # do nothing (for debugging or under-construction table)
 }
-
-
-const TableResource := preload("../editor_plugin/table_resource.gd")
 
 # TODO: Proper localization. I'm not sure if we're supposed to use get_locale()
 # from OS or TranslationServer, or how to do fallbacks for missing translations.
@@ -104,10 +104,10 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 			assert(!enumerations.has(key))
 	
 	
-	var table_resources: Array[TableResource] = []
+	var table_resources: Array[IVTableResource] = []
 	for path in table_file_paths:
 		var name := path.get_basename().get_file()
-		var table_res: TableResource
+		var table_res: IVTableResource
 		if _modding_table_resources and _modding_table_resources.has(name):
 			table_res = _modding_table_resources[name]
 		else:
@@ -234,7 +234,7 @@ func c_unescape_patch(text: String) -> String:
 	return text
 
 
-func _add_table_enumeration(table_res: TableResource) -> void:
+func _add_table_enumeration(table_res: IVTableResource) -> void:
 	var table_name := table_res.table_name
 	var enumeration_dict := {}
 	assert(!_enumeration_dicts.has(table_name), "Duplicate table name")
@@ -252,7 +252,7 @@ func _add_table_enumeration(table_res: TableResource) -> void:
 		_enumeration_arrays[entity_name] = enumeration_array
 
 
-func _modify_table_enumeration(table_res: TableResource) -> void:
+func _modify_table_enumeration(table_res: IVTableResource) -> void:
 	var modifies_name := table_res.modifies_table_name
 	assert(_enumeration_dicts.has(modifies_name), "No enumeration for " + modifies_name)
 	var enumeration_dict: Dictionary = _enumeration_dicts[modifies_name]
@@ -273,14 +273,14 @@ func _modify_table_enumeration(table_res: TableResource) -> void:
 		_enumeration_arrays[entity_name] = enumeration_array
 
 
-func _postprocess_enumeration(table_res: TableResource) -> void:
+func _postprocess_enumeration(table_res: IVTableResource) -> void:
 	var table_name := table_res.table_name
 	_table_n_rows[table_name] = table_res.n_rows
 	_entity_prefixes[table_name] = table_res.entity_prefix
 	_count += _table_n_rows[table_name]
 
 
-func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> void:
+func _postprocess_db_table(table_res: IVTableResource, has_entity_names: bool) -> void:
 	var table_dict := {}
 	var table_name := table_res.table_name
 	var column_names := table_res.column_names
@@ -353,7 +353,7 @@ func _postprocess_db_table(table_res: TableResource, has_entity_names: bool) -> 
 		_table_defaults[table_name] = defaults # possibly needed for DB_ENTITIES_MOD
 
 
-func _postprocess_db_entities_mod(table_res: TableResource) -> void:
+func _postprocess_db_entities_mod(table_res: IVTableResource) -> void:
 	# We don't modify the table resource. We do modify postprocessed table.
 	# TODO: Should work if >1 mod table for existing table, but need to test.
 	var modifies_table_name := table_res.modifies_table_name
@@ -469,7 +469,7 @@ func _postprocess_db_entities_mod(table_res: TableResource) -> void:
 				precisions_array[row] = _get_float_str_precision(import_value)
 
 
-func _postprocess_wiki_lookup(table_res: TableResource) -> void:
+func _postprocess_wiki_lookup(table_res: IVTableResource) -> void:
 	# These are NOT added to the 'tables' dictionary!
 	if !_enable_wiki:
 		return
@@ -487,7 +487,7 @@ func _postprocess_wiki_lookup(table_res: TableResource) -> void:
 		_count += 1
 
 
-func _postprocess_enum_x_enum(table_res: TableResource) -> void:
+func _postprocess_enum_x_enum(table_res: IVTableResource) -> void:
 	var table_array_of_arrays: Array[Array] = []
 	var table_name := table_res.table_name
 	var row_names := table_res.row_names
