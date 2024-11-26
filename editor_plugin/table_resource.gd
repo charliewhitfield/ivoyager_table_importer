@@ -64,6 +64,9 @@ const SUPPORTED_TYPES := {
 	&"COLOR" : TYPE_COLOR,
 }
 
+const UNIT_ALLOWED_TYPES: Array[int] = [TYPE_FLOAT, TYPE_VECTOR2, TYPE_VECTOR3, TYPE_VECTOR4,
+		TYPE_COLOR]
+
 const ALLOWED_SPECIFIC_DIRECTIVES := [
 	# List for each table format (we don't need DONT_PARSE here).
 	[],
@@ -120,7 +123,6 @@ var next_idx := 1
 
 # debug data
 @export var path: String
-var debug_pos := ""
 
 
 func import_file(file: FileAccess, source_path: String) -> void:
@@ -306,7 +308,6 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 				for column: int in skip_column_0_iterator:
 					assert(line_array[column], "Missing Type in %s, %s, %s" % [path, row, column])
 					var field := column_names[column - 1]
-					debug_pos = "Type header, " + field
 					db_types[field] = _get_postprocess_type(line_array[column])
 				has_types = true
 				row += 1
@@ -355,9 +356,10 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 					"Table format requires 'Type' in " + path)
 			for field: StringName in db_units:
 				var type: int = db_types[field]
-				assert(type == TYPE_FLOAT or type == TYPE_MAX + TYPE_FLOAT,
-						"Unit specified in field '%s' that is neither FLOAT nor ARRAY[FLOAT]: %s"
-						% [field, path])
+				assert(UNIT_ALLOWED_TYPES.has(type) if type < TYPE_MAX
+						else UNIT_ALLOWED_TYPES.has(type - TYPE_MAX),
+						"Unit specified in column type that should not have unit; '%s', %s" % [
+						field, path])
 			
 			# init arrays in dictionaries
 			for field in column_names: # none if is_enumeration
@@ -392,7 +394,6 @@ func _preprocess_db_style(cells: Array[Array], is_enumeration: bool, is_wiki_loo
 			if !raw_value and db_import_defaults.has(field):
 				preprocess_value = db_import_defaults[field]
 			else:
-				debug_pos = str(row) + ", " + field
 				preprocess_value = _get_value_index(raw_value)
 			dict_of_field_arrays[field][content_row] = preprocess_value
 		content_row += 1
@@ -423,18 +424,18 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 	var type_pos := specific_directives.find(TableDirectives.DATA_TYPE)
 	assert(type_pos >= 0, "Table format requires @DATA_TYPE in " + path)
 	var raw_type := specific_directive_args[type_pos]
-	debug_pos = "DATA_TYPE"
 	exe_type = _get_postprocess_type(raw_type)
 	var raw_default := ""
 	var default_pos := specific_directives.find(TableDirectives.DATA_DEFAULT)
 	if default_pos >= 0:
 		raw_default = specific_directive_args[default_pos]
-	debug_pos = "DATA_DEFAULT"
 	exe_import_default = _get_value_index(raw_default)
 	var unit_pos := specific_directives.find(TableDirectives.DATA_UNIT)
 	exe_unit = &""
 	if unit_pos >= 0:
-		assert(exe_type == TYPE_FLOAT, "Can't use '@DATA_UNIT' for non-FLOAT in " + path)
+		assert(UNIT_ALLOWED_TYPES.has(exe_type) if exe_type < TYPE_MAX
+				else UNIT_ALLOWED_TYPES.has(exe_type - TYPE_MAX),
+				"Can't use '@DATA_UNIT' in this table type: " + path)
 		exe_unit = StringName(specific_directive_args[unit_pos])
 	if specific_directives.has(TableDirectives.TRANSPOSE):
 		var swap_prefix := row_prefix
@@ -481,7 +482,6 @@ func _preprocess_enum_x_enum(cells: Array[Array]) -> void:
 			var raw_value := line_array[column]
 			var preprocess_value: int
 			if raw_value:
-				debug_pos = str(row) + ", " + str(column)
 				preprocess_value = _get_value_index(raw_value)
 			else:
 				preprocess_value = exe_import_default
@@ -493,14 +493,16 @@ func _get_postprocess_type(type_str: StringName) -> int:
 	
 	if SUPPORTED_TYPES.has(type_str):
 		return SUPPORTED_TYPES[type_str]
-		
-	# Array types are encoded using int values >= TYPE_MAX
+	
+	# Array types are encoded using int values >= TYPE_MAX. We don't expect to
+	# ever want nested arrays so don't recurse here.
 	if type_str.begins_with("ARRAY[") and type_str.ends_with("]"):
-		var array_type := _get_postprocess_type(type_str.trim_prefix("ARRAY[").trim_suffix("]"))
-		assert(array_type < TYPE_MAX, "Nested arrays not allowed")
+		var array_type_str := type_str.trim_prefix("ARRAY[").trim_suffix("]")
+		var array_type: int = SUPPORTED_TYPES.get(array_type_str, -1)
+		assert(array_type != -1, "Missing or unsupported array Type '%s' in %s" % [type_str, path])
 		return TYPE_MAX + array_type
 	
-	assert(false, "Missing or unsupported table Type '%s' in %s, %s" % [type_str, path, debug_pos])
+	assert(false, "Missing or unsupported Type '%s' in %s" % [type_str, path])
 	return -1
 
 
