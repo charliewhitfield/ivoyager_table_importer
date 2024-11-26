@@ -531,6 +531,8 @@ func _get_unindexing(indexing: Dictionary) -> Array[String]:
 func _get_postprocess_value(import_str: String, prefix: String, type: int, unit: StringName
 		) -> Variant:
 	
+	import_str = import_str.strip_edges() # comma-delimited elements may have spaces
+	
 	# Table constant is used only if it is an expected type.
 	var constant_value: Variant = _table_constants.get(import_str) # usually null
 	var constant_type := typeof(constant_value)

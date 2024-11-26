@@ -64,7 +64,6 @@ const SUPPORTED_TYPES := {
 	&"COLOR" : TYPE_COLOR,
 }
 
-
 const ALLOWED_SPECIFIC_DIRECTIVES := [
 	# List for each table format (we don't need DONT_PARSE here).
 	[],
@@ -142,14 +141,17 @@ func import_file(file: FileAccess, source_path: String) -> void:
 		if file_line.begins_with("#") or file_line.begins_with('"#') or file_line.begins_with("'#"):
 			continue
 		
-		# get line into array and do quote processing
+		# Get line into array and do edge stripping and quote processing.
+		# Double quotes are removed only if at both ends. Single quote if at begining.
 		var line_split := file_line.split("\t") # PackedStringArray, but we want an Array
 		var line_array: Array[String] = Array(Array(line_split), TYPE_STRING, &"", null)
 		for i in line_array.size():
-			if line_array[i].begins_with('"') and line_array[i].ends_with('"'):
-				line_array[i] = line_array[i].lstrip('"').rstrip('"')
-			if line_array[i].begins_with("'"):
-				line_array[i] = line_array[i].lstrip("'")
+			var value := line_array[i].strip_edges()
+			if value.begins_with('"') and value.ends_with('"'):
+				value = value.lstrip('"').rstrip('"')
+			if value.begins_with("'"):
+				value = value.lstrip("'")
+			line_array[i] = value.strip_edges() # could have stray spaces inside or outside quotes
 		
 		# handle or store directives
 		if line_array[0].begins_with("@"):

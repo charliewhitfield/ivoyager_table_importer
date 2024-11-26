@@ -47,38 +47,6 @@ extends Node
 ## [url=https://github.com/ivoyager/ivoyager_table_importer/blob/master/README.md]README[/url]
 ## for details.
 
-## Default values for [missing_values].
-const DEFAULT_MISSING_VALUES := {
-	TYPE_BOOL : false,
-	TYPE_STRING : "",
-	TYPE_STRING_NAME : &"",
-	TYPE_INT : -1,
-	TYPE_FLOAT : NAN, # Watch out for failed '==' comparisons!
-	TYPE_VECTOR2 : Vector2(-INF, -INF),
-	TYPE_VECTOR3 : Vector3(-INF, -INF, -INF),
-	TYPE_VECTOR4 : Vector4(-INF, -INF, -INF, -INF),
-	TYPE_COLOR : Color(-INF, -INF, -INF, -INF),
-	TYPE_ARRAY : [], # Arrays always have a data type! Don't change this one!
-}
-
-const DEFAULT_TABLE_CONSTANTS := {
-	&"x" : true,
-	&"true" : true,
-	&"True" : true,
-	&"TRUE" : true,
-	&"false" : false,
-	&"False" : false,
-	&"FALSE" : false,
-	&"nan" : NAN,
-	&"NAN" : NAN,
-	&"?" : INF,
-	&"inf" : INF,
-	&"INF" : INF,
-	&"-?" : -INF,
-	&"-inf" : -INF,
-	&"-INF" : -INF,
-}
-
 
 ## Contains all postprocessed table data. See class comments for structure.
 var tables := {}
@@ -120,17 +88,44 @@ var precisions := {}
 ## would not be substituted. User can add, replace or disable values by supplying
 ## [param merge_table_constants] in [method postprocess_tables] (use null to disable
 ## an existing value).
-var table_constants := DEFAULT_TABLE_CONSTANTS
+var table_constants := {
+	&"x" : true,
+	&"true" : true,
+	&"True" : true,
+	&"TRUE" : true,
+	&"false" : false,
+	&"False" : false,
+	&"FALSE" : false,
+	&"nan" : NAN,
+	&"NAN" : NAN,
+	&"?" : INF,
+	&"inf" : INF,
+	&"INF" : INF,
+	&"-?" : -INF,
+	&"-inf" : -INF,
+	&"-INF" : -INF,
+}
 ## Defines how an empty table cell without Default is interpreted by the postprocessor
 ## by column type ([annotation @GlobalScope.Variant.Type]).
 ## Use [param replacement_missing_values] in [method postprocess_tables]
-## to replace this dictionary. Note: The reason for strange values here such as
+## to replace specific missing type values. Note: The reason for strange values here such as
 ## Color(-INF,-INF,-INF,-INF), rather than Color.BLACK, is that API constructor methods
 ## like [method db_build_object] won't assign propeties that are 'missing' in the table.
 ## Hence, Color.BLACK won't be set on an object if that is defined as the missing color.[br]
 ## WARNING: TYPE_ARRAY must have value [].[br]
 ## WARNING: Replacement has not been tested!
-var missing_values := DEFAULT_MISSING_VALUES
+var missing_values := {
+	TYPE_BOOL : false,
+	TYPE_STRING : "",
+	TYPE_STRING_NAME : &"",
+	TYPE_INT : -1,
+	TYPE_FLOAT : NAN, # Watch out for failed '==' comparisons!
+	TYPE_VECTOR2 : Vector2(-INF, -INF),
+	TYPE_VECTOR3 : Vector3(-INF, -INF, -INF),
+	TYPE_VECTOR4 : Vector4(-INF, -INF, -INF, -INF),
+	TYPE_COLOR : Color(-INF, -INF, -INF, -INF),
+	TYPE_ARRAY : [], # Arrays always have a data type! Don't change this one!
+}
 ## This will be null after calling [method postprocess_tables]. It's accessible before
 ## postprocessing for [IVTableModding].
 var table_postprocessor := IVTablePostprocessor.new()
@@ -147,10 +142,8 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wik
 		enable_precisions := false, merge_table_constants := {}, replacement_missing_values := {}
 		) -> void:
 	
-	if merge_table_constants:
-		table_constants.merge(merge_table_constants, true)
-	if replacement_missing_values:
-		missing_values = replacement_missing_values
+	table_constants.merge(merge_table_constants, true)
+	missing_values.merge(replacement_missing_values, true)
 	var missing_float: float = missing_values[TYPE_FLOAT]
 	_is_missing_float_nan = is_nan(missing_float)
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
