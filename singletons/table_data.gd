@@ -152,9 +152,6 @@ func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wik
 			enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes, wiki_lookup,
 			precisions, enable_wiki, enable_precisions, table_constants, missing_values)
 	table_postprocessor = null
-	
-	var test: Array[float] = []
-	print("testing ", test == [])
 
 
 # For get functions below, table is "planets", "moons", etc. Most get functions
@@ -549,8 +546,8 @@ func get_db_row_data_array(fields: Array[StringName], table: StringName, row: in
 	return data
 
 
-## Sets a dictionary key:value pair for every field in table from
-## [param fields] that has a non-'missing' value.
+## Sets [param dict] key:value pair for every field in [param fields] that has a
+## non-'missing' value in [param table].
 ## Works for DB_ENTITIES and DB_ANONYMOUS_ROWS tables.
 func db_build_dictionary(dict: Dictionary, fields: Array[StringName], table: StringName, row: int
 		) -> void:
@@ -566,8 +563,8 @@ func db_build_dictionary(dict: Dictionary, fields: Array[StringName], table: Str
 		i += 1
 
 
-## Sets value for each existing dictionary key that exactly matches a column
-## field in table. Missing value in table without default will not be set.
+## Sets [param dict] value for each existing dictionary key that exactly matches a column
+## field in [param table]. Missing value in table without Default will not be set.
 ## Works for DB_ENTITIES and DB_ANONYMOUS_ROWS tables.
 func db_build_dictionary_from_keys(dict: Dictionary, table: StringName, row: int) -> void:
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
@@ -575,6 +572,18 @@ func db_build_dictionary_from_keys(dict: Dictionary, table: StringName, row: int
 	assert(dict, "Expected a dict with keys")
 	var table_dict: Dictionary = tables[table]
 	for field: StringName in dict:
+		if db_has_value(table, field, row):
+			dict[field] = table_dict[field][row]
+
+
+## Sets [param dict] key:value pair for every table field that has a 'non-missing'
+## value or Default.
+## Works for DB_ENTITIES and DB_ANONYMOUS_ROWS tables.
+func db_build_dictionary_all_fields(dict: Dictionary, table: StringName, row: int) -> void:
+	assert(tables.has(table), "Specified table '%s' does not exist" % table)
+	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
+	var table_dict: Dictionary = tables[table]
+	for field: StringName in tables[table]:
 		if db_has_value(table, field, row):
 			dict[field] = table_dict[field][row]
 
@@ -595,9 +604,8 @@ func db_build_object(object: Object, fields: Array[StringName], table: StringNam
 		i += 1
 
 
+## Sets object property for every table field that has a 'non-missing' value or Default.
 ## Works for DB_ENTITIES and DB_ANONYMOUS_ROWS tables.
-## Sets object property for each field that exactly matches a field in table.
-## Missing value in table without default will not be set. 
 func db_build_object_all_fields(object: Object, table: StringName, row: int) -> void:
 	assert(tables.has(table), "Specified table '%s' does not exist" % table)
 	assert(typeof(tables[table]) == TYPE_DICTIONARY, "Specified table must be 'DB' format")
