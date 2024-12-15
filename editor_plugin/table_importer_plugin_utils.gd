@@ -21,30 +21,61 @@
 class_name IVTableImporterPluginUtils
 extends Object
 
+## Static plugin and config functions
+##
+## All functions are safe to call in-editor (from EditorPlugin) or at runtime.[br][br]
+##
+## These functions are copied from a 'master' plugin_utils.gd file containing
+## all ivoyager plugin utility functions at:
+## [url]https://github.com/ivoyager/ivoyager_core/blob/master/editor_plugin/plugin_utils.gd[/url]
 
-# Static plugin functions are copied and should be identical in all I, Voyager
-# plugins. The 'master' version is at:
-# https://github.com/ivoyager/ivoyager_core/blob/master/editor_plugin/core_plugin_utils.gd
+
+## Supply only the base name from the plugin path.
+## Assumes plugin.cfg path is "res://addons/<plugin>/plugin.cfg".
+static func is_plugin_enabled(plugin: String) -> bool:
+	if EditorInterface.has_method(&"is_plugin_enabled"): # called from EditorPlugin!
+		return EditorInterface.is_plugin_enabled(plugin)
+	# called at runtime...
+	var path := "res://addons/" + plugin + "/plugin.cfg"
+	var plugin_paths: PackedStringArray = ProjectSettings.get_setting("editor_plugins/enabled")
+	return plugin_paths.has(path)
 
 
-static func print_plugin_name_and_version(plugin_config_path: String, append := "") -> void:
+## Supply only the base names from the plugin paths.
+## Assumes plugin.cfg paths are "res://addons/<plugin>/plugin.cfg".
+static func is_plugins_enabled(plugins: Array[String]) -> bool:
+	for plugin in plugins:
+		if !is_plugin_enabled(plugin):
+			return false
+	return true
+
+
+## Assumes plugin.cfg path is "res://addons/<plugin>/plugin.cfg".[br][br]
+## WARNING: For this function to work in exported project, add "*.cfg" or specific cofig file to
+## Project/Export.../Resources/"Filters to export non-resource files/folders".
+static func print_plugin_name_and_version(plugin: String, append := "") -> void:
+	var path := "res://addons/" + plugin + "/plugin.cfg"
 	var plugin_cfg := ConfigFile.new()
-	var err := plugin_cfg.load(plugin_config_path)
+	var err := plugin_cfg.load(path)
 	if err != OK:
-		assert(false, "Failed to load config '%s'" % plugin_config_path)
+		assert(false, "Failed to load config '%s'" % path)
 		return
 	var name: String = plugin_cfg.get_value("plugin", "name")
 	var version: String = plugin_cfg.get_value("plugin", "version")
 	print("%s (plugin) %s%s" % [name, version, append])
 
 
+## WARNING: For this function to work in exported project, add "*.cfg" or specific cofig file to
+## Project/Export.../Resources/"Filters to export non-resource files/folders".
 static func config_exists(config_path: String) -> bool:
 	var config := ConfigFile.new()
 	return config.load(config_path) == OK
 
 
+## Returns null if doesn't exist.[br][br]
+## WARNING: For this function to work in exported project, add "*.cfg" or specific cofig file to
+## Project/Export.../Resources/"Filters to export non-resource files/folders".
 static func get_config(config_path: String) -> ConfigFile:
-	# Returns null if doesn't exist.
 	var config := ConfigFile.new()
 	var err := config.load(config_path)
 	if err == OK:
@@ -52,10 +83,12 @@ static func get_config(config_path: String) -> ConfigFile:
 	return null
 
 
+## Specify one or two override configs. The last one has the final say.
+## There is no error if override(s) configs don't exist or fail to load.[br][br]
+## WARNING: For this function to work in exported project, add "*.cfg" or specific cofig files to
+## Project/Export.../Resources/"Filters to export non-resource files/folders".
 static func get_config_with_override(config_path: String, override_config_path: String,
 		override_config_path2 := "") -> ConfigFile:
-	# Specify one or two override configs. The last one has the final say.
-	# There is no error if override(s) configs don't exist or fail to load.
 	var config := get_config(config_path)
 	if !config:
 		assert(false, "Failed to load config '%s'" % config_path)
@@ -75,3 +108,11 @@ static func get_config_with_override(config_path: String, override_config_path: 
 		for property in override_config.get_section_keys(section):
 			config.set_value(section, property, override_config.get_value(section, property))
 	return config
+
+
+## I, Voyager plugins have a 'base' ivoyager_config (not the plugin.cfg!) that
+## can be overridden by project level override(s) at "res://ivoyager_override.cfg"
+## and "res://ivoyager_override2.cfg" (if they exist). 
+static func get_ivoyager_config(base_ivoyager_config_path: String) -> ConfigFile:
+	return get_config_with_override(base_ivoyager_config_path,
+			"res://ivoyager_override.cfg", "res://ivoyager_override2.cfg")

@@ -80,14 +80,13 @@ var wiki_lookup := {}
 ## [url=https://github.com/ivoyager/planetarium]Planetarium[/url] (for example).
 var precisions := {}
 ## Defines how text in table files is interpreted if the cell or Default is
-## not empty. Constants are used [i]without[/i] any other specified postprocessing,
-## such as Prefix or Unit. E.g., if key:value MARS_PERIHELION:<float> exists we expect it to be
-## already in internal units. The constant is used only if the type is correct for the column or
-## container element, with STRING and STRING_NAME being mutually compatable. E.g.,
-## a cell with "NAN" that is type STRING is just the text value: the float value
-## would not be substituted. User can add, replace or disable values by supplying
-## [param merge_table_constants] in [method postprocess_tables] (use null to disable
-## an existing value).
+## not empty. Constants are used [b]without[/b] any other specified postprocessing
+## such as prefixing or unit conversion. The constant is used only if the type is
+## correct for the column or container element (with STRING and STRING_NAME being
+## mutually compatable). E.g., "inf" is the float INF in a FLOAT column but
+## is simply "inf" in a STRING column. User can add, replace or disable values by
+## supplying [param add_overwrite_table_constants] in [method postprocess_tables] (use null to
+## disable an existing value).
 var table_constants := {
 	&"x" : true,
 	&"true" : true,
@@ -105,52 +104,82 @@ var table_constants := {
 	&"-inf" : -INF,
 	&"-INF" : -INF,
 }
-## Defines how an empty table cell without Default is interpreted by the postprocessor
-## by column type ([annotation @GlobalScope.Variant.Type]).
-## Use [param replacement_missing_values] in [method postprocess_tables]
-## to replace specific missing type values. Note: The reason for strange values here such as
-## Color(-INF,-INF,-INF,-INF), rather than Color.BLACK, is that API constructor methods
-## like [method db_build_object] won't assign propeties that are 'missing' in the table.
-## Hence, Color.BLACK won't be set on an object if that is defined as the missing color.[br]
-## WARNING: TYPE_ARRAY must have value [].[br]
-## WARNING: Replacement has not been tested!
+## Defines how empty table cells without Default are interpreted by column type,
+## where keys are from [annotation @GlobalScope.Variant.Type].
+## Use [param overwrite_missing_values] in [method postprocess_tables]
+## to replace specific missing type values. By default, missing values for the
+## appropriate types are: false, "", &"", -1, NAN, [], <VectorX or Color>(-INF, -INF,...).
+## Note that a 'missing' value in the file table is exactly equivalent to an empty cell
+## without Default for the purpose of [method db_has_value] and other methods.
+## Hence, we avoid potentially valid values such as 0, 0.0, Vector3.ZERO, Color.BLACK, etc.[br][br]
+##
+## WARNING: Don't replace TYPE_ARRAY : []. That's hard-coded!
 var missing_values := {
 	TYPE_BOOL : false,
 	TYPE_STRING : "",
 	TYPE_STRING_NAME : &"",
 	TYPE_INT : -1,
-	TYPE_FLOAT : NAN, # Watch out for failed '==' comparisons!
+	TYPE_FLOAT : NAN,
 	TYPE_VECTOR2 : Vector2(-INF, -INF),
 	TYPE_VECTOR3 : Vector3(-INF, -INF, -INF),
 	TYPE_VECTOR4 : Vector4(-INF, -INF, -INF, -INF),
 	TYPE_COLOR : Color(-INF, -INF, -INF, -INF),
-	TYPE_ARRAY : [], # Arrays always have a data type! Don't change this one!
+	TYPE_ARRAY : [], # Hard-coded. Don't change this one!
 }
 ## This will be null after calling [method postprocess_tables]. It's accessible before
 ## postprocessing for [IVTableModding].
 var table_postprocessor := IVTablePostprocessor.new()
 
-var _is_missing_float_nan := true
+static var placeholder_unit_conversion_method := func(_x: float, _unit: StringName,
+		 _to_internal: bool, _parse_compound_unit: bool) -> float:
+	assert(false, "Unit in table but no unit_conversion_method specified in postprocess_tables()")
+	return NAN
+
+var _missing_float_is_nan := true # requires special handling since NAN != NAN
+
 
 ## Call this function once to populate dictionaries with postprocessed table
-## data. All containers are set to read-only. See comments in units.gd to
-## change float conversion units. 
-## Dictionary 'table_constants' can contain values of any type; it
-## is merged with an existing dictionary.
-## WARNING: Changing 'missing_values' should work for most types but has not been tested.
+## data. All data containers will be set to read-only.[br][br]
+##
+## To use enum constants in table file INT columns, include the enums in
+## [param project_enums].[br][br]
+##
+## To add arbitrary constants in table file columns of any type, include key: value
+## pairs in [param add_overwrite_table_constants]. The constants will be applied
+## only if the constant type matches the column type. Use this also to overwrite
+## or disable existing constants in [member table_constants] (use null to disable).[br][br]
+##
+## To replace default 'missing' type values, supply replacements in
+## [param overwrite_missing_values]. See notes and cautions in [member missing_values].[br][br]
+##
+## WIP (after plugin split):[br]
+## If float units are used in any table file you MUST either a) have the 'ivoyager_units'
+## plugin enabled or b) supply your own [param unit_conversion_method]. By default,
+## the function will attempt to get this method from the plugin.
 func postprocess_tables(table_file_paths: Array, project_enums := [], enable_wiki := false,
-		enable_precisions := false, merge_table_constants := {}, replacement_missing_values := {}
-		) -> void:
+		enable_precisions := false, add_overwrite_table_constants := {},
+		overwrite_missing_values := {},
+		unit_conversion_method := placeholder_unit_conversion_method) -> void:
 	
-	table_constants.merge(merge_table_constants, true)
-	missing_values.merge(replacement_missing_values, true)
+	table_constants.merge(add_overwrite_table_constants, true)
+	missing_values.merge(overwrite_missing_values, true)
+	assert(missing_values[TYPE_ARRAY] == [], "Don't change missing array value!") # hard-coding!
 	var missing_float: float = missing_values[TYPE_FLOAT]
-	_is_missing_float_nan = is_nan(missing_float)
+	_missing_float_is_nan = is_nan(missing_float)
+	# We type argument arrays here so plugin user doesn't have to...
 	var table_file_paths_: Array[String] = Array(table_file_paths, TYPE_STRING, &"", null)
 	var project_enums_: Array[Dictionary] = Array(project_enums, TYPE_DICTIONARY, &"", null)
+	if is_same(unit_conversion_method, placeholder_unit_conversion_method):
+		# TODO: Make conditional after 'Tables' and 'Units' plugin split...
+		#if IVTableImporterPluginUtils.is_plugin_enabled("ivoyager_units"):
+		#	var ivqconvert: Script = load("res://addons/ivoyager_units/ivqconvert.gd")
+		#	unit_conversion_method = ivqconvert.convert_quantity
+		unit_conversion_method = IVQConvert.convert_quantity
+	
 	table_postprocessor.postprocess(table_file_paths_, project_enums_, tables, enumerations,
 			enumeration_dicts, enumeration_arrays, table_n_rows, entity_prefixes, wiki_lookup,
-			precisions, enable_wiki, enable_precisions, table_constants, missing_values)
+			precisions, enable_wiki, enable_precisions, table_constants, missing_values,
+			unit_conversion_method)
 	table_postprocessor = null
 
 
@@ -316,7 +345,7 @@ func db_has_value(table: StringName, field: StringName, row := -1, entity := &""
 		row = enumerations[entity]
 	var value: Variant = table_dict[field][row]
 	var type := typeof(value)
-	if type == TYPE_FLOAT and _is_missing_float_nan:
+	if type == TYPE_FLOAT and _missing_float_is_nan:
 		var float_value: float = value
 		if is_nan(float_value):
 			return false
@@ -337,7 +366,7 @@ func db_has_float_value(table: StringName, field: StringName, row := -1, entity 
 		assert(enumerations.has(entity), "Unknown table enumeration '%s'" % entity)
 		row = enumerations[entity]
 	var float_value: float = table_dict[field][row]
-	if _is_missing_float_nan and is_nan(float_value):
+	if _missing_float_is_nan and is_nan(float_value):
 		return false
 	return float_value != missing_values[TYPE_FLOAT]
 

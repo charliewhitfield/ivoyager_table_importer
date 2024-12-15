@@ -41,6 +41,7 @@ var _enable_wiki: bool
 var _enable_precisions: bool
 var _table_constants: Dictionary
 var _missing_values: Dictionary
+var _unit_conversion_method: Callable
 
 var _table_defaults := {} # only tables that might be modified
 
@@ -60,7 +61,8 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 		tables: Dictionary, enumerations: Dictionary, enumeration_dicts: Dictionary,
 		enumeration_arrays: Dictionary, table_n_rows: Dictionary, entity_prefixes: Dictionary,
 		wiki_lookup: Dictionary, precisions: Dictionary, enable_wiki: bool, enable_precisions: bool,
-		table_constants: Dictionary, missing_values: Dictionary) -> void:
+		table_constants: Dictionary, missing_values: Dictionary,
+		unit_conversion_method: Callable) -> void:
 	
 	_start_msec = Time.get_ticks_msec()
 	_count = 0
@@ -77,6 +79,7 @@ func postprocess(table_file_paths: Array[String], project_enums: Array[Dictionar
 	_enable_precisions = enable_precisions
 	_table_constants = table_constants
 	_missing_values = missing_values
+	_unit_conversion_method = unit_conversion_method
 	
 	# asserts
 	for key: String in table_constants:
@@ -568,7 +571,7 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		var import_float := float_str.to_float()
 		#var import_float := unit_split[0].lstrip("~").to_float()
 		if unit:
-			return IVQConvert.convert_quantity(import_float, unit, true, true)
+			return _unit_conversion_method.call(import_float, unit, true, true)
 		return import_float
 	
 	if type == TYPE_STRING:
@@ -612,10 +615,6 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		assert(_enumerations.has(import_str), "Unknown enumeration " + import_str)
 		return _enumerations[import_str]
 	
-	# Below types recursively call this function for each element, which are
-	# comma-delimited in table cells. Elements can have type-approprate constants,
-	# units, etc., exactly like whole-cell values.
-	
 	if type == TYPE_VECTOR2:
 		assert(!prefix, "Prefix not allowed for VECTOR2")
 		if !import_str:
@@ -623,12 +622,11 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		if constant_type == TYPE_VECTOR2:
 			return constant_value
 		var import_split := import_str.split(",")
-		assert(import_split.size() == 2, "Vector2 values must be entered as 'x,y'")
+		assert(import_split.size() == 2, "VECTOR2 values must be entered as 'x, y'")
 		var vector2 := Vector2()
 		for i in 2:
 			vector2[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
 		return vector2
-	
 	
 	if type == TYPE_VECTOR3:
 		assert(!prefix, "Prefix not allowed for VECTOR3")
@@ -637,12 +635,11 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		if constant_type == TYPE_VECTOR3:
 			return constant_value
 		var import_split := import_str.split(",")
-		assert(import_split.size() == 3, "Vector3 values must be entered as 'x,y,z'")
+		assert(import_split.size() == 3, "VECTOR3 values must be entered as 'x, y, z'")
 		var vector3 := Vector3()
 		for i in 3:
 			vector3[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
 		return vector3
-	
 	
 	if type == TYPE_VECTOR4:
 		assert(!prefix, "Prefix not allowed for VECTOR4")
@@ -651,12 +648,11 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		if constant_type == TYPE_VECTOR4:
 			return constant_value
 		var import_split := import_str.split(",")
-		assert(import_split.size() == 4, "Vector4 values must be entered as 'x,y,z,w'")
+		assert(import_split.size() == 4, "VECTOR4 values must be entered as 'x, y, z, w'")
 		var vector4 := Vector4()
 		for i in 4:
 			vector4[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
 		return vector4
-	
 	
 	if type == TYPE_COLOR:
 		assert(!prefix, "Prefix not allowed for COLOR")
@@ -675,15 +671,14 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 				return color
 			var alpha: float = _get_postprocess_value(import_split[1], "", TYPE_FLOAT, unit)
 			return Color(color, alpha)
-		assert(n_elements <= 4, "Numeric color values must be entered as 'r,g,b' or 'r,g,b,a'")
+		assert(n_elements <= 4, "Numeric COLOR values must be entered as 'r, g, b' or 'r, g, b, a'")
 		var elements_color := Color()
 		for i in n_elements:
 			elements_color[i] = _get_postprocess_value(import_split[i], "", TYPE_FLOAT, unit)
 		return elements_color
 	
-	
-	# Arrays of typed data...
 	if type >= TYPE_MAX:
+		# This is an array of typed data...
 		var array_type := type - TYPE_MAX
 		assert(array_type < TYPE_MAX and array_type != TYPE_ARRAY, "Nested array not allowed")
 		# Constant OK but it has to have correct element type.
@@ -694,7 +689,7 @@ func _get_postprocess_value(import_str: String, prefix: String, type: int, unit:
 		var array := Array([], array_type, &"", null)
 		if !import_str:
 			return array # empty typed array
-		var import_split := import_str.split(",")
+		var import_split := import_str.split(";")
 		var size := import_split.size()
 		array.resize(size)
 		for i in size:
