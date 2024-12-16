@@ -2,9 +2,9 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v0.0.8] - Not Released
+## [v0.0.8] - 2024-12-16
 
-Under development using Godot 4.3.
+Developed using Godot 4.3.
 
 Note: After v0.0.8, we'll be splitting this plugin into two new plugins: 'ivoyager_tables' and 'ivoyager_units'. The existing plugin 'ivoyager_table_importer' will be depreciated. Some changes in v0.0.8 are preparatory for this split. It should be very straightforward to swap in the two new plugins in place of this one. 
 
@@ -91,7 +91,7 @@ Developed using Godot 4.1.1.
 Initial alpha release!
 
 
-[v0.0.8]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.7...HEAD
+[v0.0.8]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.7...v0.0.8
 [v0.0.7]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.6...v0.0.7
 [v0.0.6]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.4...v0.0.5
