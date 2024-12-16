@@ -6,12 +6,20 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Under development using Godot 4.3.
 
+Note: After v0.0.8, we'll be splitting this plugin into two new plugins: 'ivoyager_tables' and 'ivoyager_units'. The existing plugin 'ivoyager_table_importer' will be depreciated. Some changes in v0.0.8 are preparatory for this split. It should be very straightforward to swap in the two new plugins in place of this one. 
+
 ### Added
+* You can optionally supply your own 'unit_conversion_method' when calling postprocess_tables().
+* You can supply your own (or override existing) table constants when calling postprocess_tables(). Table constants are imputed only in type-compatable columns, but can be used in any column type (as opposed to enums that can be used only in INT columns).
+* Support new column types: VECTOR2, VECTOR3, VECTOR4 and COLOR (and arrays of any of these types). Vector columns expect comma-delimited floats. COLOR is very flexible in interpretting values in a sensible way: e.g., "red", "ff0000", "1,0,0", "1,0,0,1", "red, 1.0".
 * Support inline unit specification for floats. E.g., '1000 s' and '1000/s' are valid anywhere a float is expected. If an inline unit is specified, it will override the column `Unit` (for 'db' formatted tables) or the table `Unit` (for enum x enum format).
+* Easy user modding by replacement files in a user directory. See details in [table_modding.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/program/table_postprocessor.gd).
 
 ### Changed
-* When IVQConvert.convert_unit() has to parse a compound unit not in 'unit_multipliers' dictionary, it will add the unit string and calculated multiplier to the dictionary. This allows quicker subsequent use or direct dictionary access of the unit string, e.g., by GUI.
+* Edge-strip spaces for cells and comma- & semicolon-delimited list elements.
 * Allow commas in float values.
+* [Breaks existing tables!] Elements specified in column type ARRAY[xxxx] are now semicolon-delimited rather than comma-delimited. This is needed because array elements requre commas in the case of ARRAY[COLOR] and ARRAY[VECTORx].
+* Newly encounterd compound units are parsed once and then memoized as keys in unit_multipliers. (The parser is slow so this is a good optimization.)
 
 ### Fixed
 * Don't assert when Unit specified for column type ARRAY[FLOAT].

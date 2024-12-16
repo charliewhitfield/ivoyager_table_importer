@@ -20,21 +20,15 @@
 @tool
 extends EditorPlugin
 
-# Adds a custom resource, an EditorImportPlugin, and autoload singletons
-# specified by 'res://addons/ivoyager_table_importer/table_importer.cfg' and/or
+# Adds an EditorImportPlugin and autoload singletons as specified by cofig files
+# 'res://addons/ivoyager_table_importer/table_importer.cfg' and
 # 'res://ivoyager_override.cfg'.
 #
 # All table data interface is through singleton 'IVTableData'
 # (singletons/table_data.gd).
-#
-# Note: There is talk in Godot issues of depreciating 'add_custom_type()'.
-# We prefer this method over file 'class_name' because it does not involve
-# .godot/global_script_class_cache.cfg, which is buggy as of Godot 4.1.1 (fails
-# to update changes outside of editor; we'll open an issue if this isn't fixed
-# in 4.2-beta builds).
 
-const plugin_utils := preload("plugin_utils.gd")
-const TableResource := preload("table_resource.gd")
+
+const plugin_utils := preload("table_importer_plugin_utils.gd")
 const EditorImportPluginClass := preload("editor_import_plugin.gd")
 
 var _config: ConfigFile # base config with overrides
@@ -44,14 +38,11 @@ var _autoloads := {}
 
 
 func _enter_tree() -> void:
-	plugin_utils.print_plugin_name_and_version("res://addons/ivoyager_table_importer/plugin.cfg",
-			" - https://ivoyager.dev")
-	_config = plugin_utils.get_config_with_override(
-			"res://addons/ivoyager_table_importer/table_importer.cfg",
-			"res://ivoyager_override.cfg", "res://ivoyager_override2.cfg")
+	plugin_utils.print_plugin_name_and_version("ivoyager_table_importer", " - https://ivoyager.dev")
+	_config = plugin_utils.get_ivoyager_config(
+		"res://addons/ivoyager_table_importer/table_importer.cfg")
 	if !_config:
 		return
-	add_custom_type("IVTableResource", "Resource", TableResource, _get_table_resource_icon())
 	_editor_import_plugin = EditorImportPluginClass.new()
 	add_import_plugin(_editor_import_plugin)
 	_add_autoloads()
@@ -60,7 +51,6 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	print("Removing I, Voyager - Table Importer (plugin)")
 	_config = null
-	remove_custom_type("IVTableResource")
 	remove_import_plugin(_editor_import_plugin)
 	_editor_import_plugin = null
 	_remove_autoloads()

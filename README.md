@@ -22,13 +22,15 @@ Then enable 'I, Voyager - Table Importer' from Godot Editor menu: Project / Proj
 This plugin is maintained for [I, Voyager's](https://github.com/ivoyager) solar system simulator and associated apps and games. It's powerful but requires very specific file formatting. It's not meant to be a general 'read any' table utility.
 
 It provides several specific table file formats that allow:
-* Specification of data `Type` so that all table values are correctly converted to statically typed internal values.
-* Specification of data `Default` to reduce table clutter. Fields that are mostly a particular value can be left mostly empty.
-* Specification of data `Prefix` to reduce enumeration text size. E.g., shorten 'PLANET_MERCURY', 'PLANET_VENUS', 'PLANET_EARTH' to 'MERCURY', 'VENUS', 'EARTH'.
-* Specification of float `Unit` so file data can be entered in the most convenient units while maintaining consistent internal representation. Unit can be specified for a whole column (for 'db' formats), whole table (for enum x enum format) or per value (anywhere a float is expected; e.g., '1000 s' or '1000/s').
-* Table **enumerations** that may reference project enums _**or**_ table-defined entity names. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _in any table_ because 'PLANET_EARTH' is row 3 in planets.tsv.
-* 'Mod' tables that modify existing tables.
-* [Optionally] Construction of a wiki lookup dictionary to use for an internal or external wiki.
+* Specification of data **Type** so that all table values are correctly converted to statically typed internal values.
+* Specification of data **Default** to reduce table clutter. Fields that are mostly a particular value can be left mostly empty.
+* Specification of data **Prefix** to reduce enumeration text size. E.g., shorten 'PLANET_MERCURY', 'PLANET_VENUS', 'PLANET_EARTH' to 'MERCURY', 'VENUS', 'EARTH'.
+* Specification of float **Unit** so file data can be entered in the most convenient units while maintaining consistent internal representation. Unit can be specified for a whole float column or within a float cell (e.g., '1000 s' or '1000/s'). The unit parser interprets compound units like 'm^3/(kg s^2)' and memoizes them for faster subsequent access.
+* Table **enumerations** that may reference project enums _**or**_ table-defined entity names in an INT column. For example, in our project, 'PLANET_EARTH' resolves to 3 as an integer _in any table_ because 'PLANET_EARTH' is row 3 in planets.tsv.
+* Table **constants** that can be used in columns of any type. This is how we handle things like 'TRUE' and '-Inf' but also can be used to add arbitrary constants like 'MARS_PERIHELION' or 'SOME_LARGE_TEXT_ITEM' if needed.
+* Tables that modify other tables.
+* **Modding support** that allows your game or project users to replace base tables with modded tables in user://modding/mod_files/.
+* Construction of a **wiki** lookup dictionary from file tables to use for an internal or external wiki.
 * [For scientific apps, mostly] Determination of float significant digits from file number text, so precision can be correctly displayed even after unit conversion.
 * Easy or optimized access to _all_ processed and statically typed data via the IVTableData singleton.
 
@@ -38,13 +40,18 @@ File and table formats are described below.
 
 All user interface is via an autoload singleton **IVTableData** added by the plugin. From here you will give postprocessing intructions and access all postprocessed table data. IVTableData also provides functions to build objects, dictionaries, or flag fields directly from table data. See API in [table_data.gd](https://github.com/ivoyager/ivoyager_table_importer/blob/master/singletons/table_data.gd).
 
-Postprocessing is controled by function:
+Postprocessing is called once by the project. The call allows specification of enums, constants, 'missing' values by type, a substitute unit conversion method, and more. After postprocessing, all table data is strictly typed and read-only.
 
-`postprocess_tables(table_names: Array, project_enums := [], unit_multipliers := {}, unit_lambdas := {}, enable_wiki := false, enable_precisions := false)`
+```
+postprocess_tables(table_file_paths: Array, project_enums := [], 
+		enable_wiki := false, enable_precisions := false, 
+		add_overwrite_table_constants := {}, overwrite_missing_values := {},
+		unit_conversion_method := placeholder_unit_conversion_method)
+```
 
-The plugin imports .tsv tables as a custom resource class that contains low-level, preprocessed data that isn't very useful except for table debugging.
+(The plugin imports .tsv tables as a custom resource class that contains low-level, preprocessed data that isn't very useful except for table debugging. Really, everything you need is in IVTableData.)
 
-## General File Format and Table Editing
+## General File Format
 
 #### Delimiter and File Extension
 
@@ -56,21 +63,37 @@ Any line starting with '@' is read as a table directive, which is used to specif
 
 Table format is specified by one of `@DB_ENTITIES` (default), `@DB_ENTITIES_MOD`, `@DB_ANONYMOUS_ROWS`, `@ENUMERATION`, `@WIKI_LOOKUP`, or `@ENUM_X_ENUM`, optionally followed by '=' and then the table name. If omitted, table name is taken from the base file name (e.g., 'planets' for 'res://path/planets.tsv' file). Several table formats don't need a table format specifier as the importer can figure it out from other clues. Some table formats allow or require additional specific directives. See details in format sections below. (' = ' is always ok in place of '='.)
 
-For debugging or work-in-progress, you can prevent any imported table from being processed using `@DONT_PARSE`.
+For debugging or work-in-progress, you can prevent any imported table from being processed using `@DONT_PARSE`. (It's still technically imported by the editor but won't be parsed line-by-line or handled by the postprocessor.)
 
 #### Comments
 
 Any line starting with '#' is ignored. Additionally, entire columns are ignored if the column 'field' name begins with '#'.
 
-#### Cell Processing
+#### General Cell Processing
 
-All cells have some processing on import before Type-processing described below:
-* Double-quotes (") will be removed if they enclose the cell on both sides.
-* A prefix single-quote ('), if present, will be removed.
+All cells are stripped of double-quotes if they enclose the cell on both sides. (These are silently added by some editors.)
+
+Spaces are edge-stripped from cells and cell-elements. 'Element' refers to comma- or semicolon-delimited data within cells of certain types, such as VECTORx, COLOR, and ARRAY[xxxx].
+
+#### Data Types
+
+Type is specified by column for 'db-style' format or for the whole table for 'enum_x_enum' format. Each data type has its own 'missing' value (e.g., NAN for float). Type-specific missing values are indicated below, but can be respecified in the call to `postprocess_tables()`. Allowed types are:
+
+* `STRING` - Data processing applies Godot escaping such as \n, \t, etc. We also convert unicode '\u' escaping  up to \uFFFF, but not '\U' escaping for larger unicodes. Empty cells will be imputed with Default value (if specified) or "".
+* `STRING_NAME` - No escaping. Empty cells will be imputed with Default value (if specified) or &"".
+* `BOOL` - Recognized table constants (which can be modified or added to) include: 'TRUE', 'True', 'true', 'x' (interpreted as true), 'FALSE', 'False' and 'false'. Empty cells will be imputed with Default value (if specified) or false. Any other cell values will cause an error.
+* `INT` - A valid integer or text 'enumeration'. Enumerations may include any table entity name (from _any_ table) or project enums specified in the `postprocess_tables()` call. Enumerations that can't be found will cause an error. Empty cells will be imputed with Default value (if specified) or -1.
+* `FLOAT` - Commas and underscores are allowed and removed before float conversion. 'E' or 'e' are ok. A '~' prefix is allowed and affects precision (see below) but not float value. Recognized table constants (which can be modified or added to) include: 'NAN', 'Nan', 'nan', 'INF', 'Inf', 'inf', '-INF', '-Inf' and '-inf'. Empty cells will be imputed with Default value (if specified) or NAN. **Inline units:** An inline unit can be specified using format 'x unit' or 'x/unit'. E.g., '1000 s' and '1000/s' are valid (the latter is equivilent to '1000 1/s'). If an inline unit is present, it will override the column `Unit`. See `Unit` below for more details.
+* `VECTOR2`, `VECTOR3`, `VECTOR4` - Enter in table cell as a comma-delimited set of 2, 3 or 4 float elements. All rules for floats above apply except they cannot have commas. Empty cells will be imputed with Default value (if specified) or VectorX(-INF, -INF,...).
+* `COLOR` - Cell content is interpretted in a sensible way. Valid representations of red include: 'red', 'ff0000', 'red, 1.0', '1, 0, 0' and '1, 0, 0, 1'. Empty cells will be imputed with Default value (if specified) or Color(-INF, -INF, -INF, -INF).
+* `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ';' and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Empty cells will be imputed with Default value (if specified) or an empty, typed array.
+
+Why do we use strange 'missing' values like Color(-INF, -INF, -INF, -INF)? A 'missing' value entered in the file table is exactly equivalent to an empty cell
+without Default for the purpose of `db_has_value()` and constructor methods such as `db_build_object()`. Hence, we avoid using potentially valid values such as Color.BLACK and Vector3.ZERO as 'missing' values. In our usage, -1 works well for INT because these columns are most often used for enumerations.
 
 #### Table Editor Warning!
 
-Most .csv/.tsv file editors will 'interpret' and change your table data, especially any values that look like numbers or dates. For example, Excel will change '1.32712440018e20' to '1.33E+20' in your saved file without warning! One editor that does NOT change your data is [Rons Data Edit](https://www.ronsplace.ca/Products/RonsDataEdit). It's free for files with up to 1000 rows, or pay for 'pro' unlimited.
+Most .csv/.tsv file editors will 'interpret' and change (i.e., corrupt) table data without any warning, with a particularly aggressive focus on numbers and items that even vaguely look like dates (and perhaps other things). For example, Excel will change '1.32712440018e20' to '1.33E+20' and 'mar-1' to ####### on saving. One editor that does NOT change data without your input is [Rons Data Edit](https://www.ronsplace.ca/Products/RonsDataEdit). There is a free version that will let you work with files with up to 1000 rows.
 
 ## DB_ENTITIES Format
 
@@ -88,13 +111,7 @@ Processed data are structured as a dictionary-of-statically-typed-field-arrays. 
 The first non-comment, non-directive line is assumed to hold the field names. The left-most cell must be empty.
 
 After field names and before data, tables can have the following header rows in any order:
-* `Type` (required) with column values:
-   * `STRING` - Data processing applies Godot escaping such as \n, \t, etc. We also convert unicode '\u' escaping  up to \uFFFF (but not '\U' escaping for larger unicodes). Empty cells will be imputed with `Default` or "".
-   * `STRING_NAME` - No escaping. Empty cells will be imputed with `Default` or &"".
-   * `BOOL` - Case-insensitive 'True' or 'False'. 'x' (lower case) is interpreted as True. Empty cells will be imputed with `Default` or False. Any other cell values will cause an error.
-   * `INT` - A valid integer or text 'enumeration'. Enumerations may include any table entity name (from _any_ table) or hard-coded project enums specified in the `postprocess_tables()` call (enumerations that can't be found will cause an error at this function call). Empty cells will be imputed with `Default` or -1.
-   * `FLOAT` - 'INF', '-INF' and 'NAN' (case-insensitive) are correctly interpreted. '?' and '-?' are interpreted as INF and -INF, respectively. 'E' or 'e' are ok. Underscores '_' are allowed and removed before float conversion. A '~' prefix is allowed and affects precision (see below) but not float value. Empty cells will be imputed with `Default` or NAN. **Inline units:** An inline unit can be specified using format 'x unit' or 'x/unit'. E.g., '1000 s' and '1000/s' are valid (the latter is equivilent to '1000 1/s'). If an inline unit is present, it will override the column `Unit`. See `Unit` below for more details.
-   * `ARRAY[xxxx]` (where 'xxxx' specifies element type and is any of the above types) - The cell will be split by ',' (no space) and each element interpreted exactly as its type above. Column `Unit` and `Prefix`, if specified, are applied element-wise. Empty cells will be imputed with `Default` or an empty, typed array.
+* `Type` (required): See data types above.
 * `Default` (optional): Default values must be empty or follow Type rules above. If non-empty, this value is imputed for any empty cells in the column.
 * `Unit` (optional; FLOAT fields only): The data processor recognizes a broad set of unit symbols (mostly but not all SI) and, by default, converts table floats to SI base units in the postprocessed 'internal' data. Default unit conversions are defined by 'unit_multipliers' and 'unit_lambdas' dictionaries [here](https://github.com/ivoyager/ivoyager_table_importer/blob/master/singletons/units.gd). Unit symbols and/or internal representation can be changed by specifying replacement conversion dictionaries in the `postprocess_tables()` call.
 * `Prefix` (optional; STRING, STRING_NAME and INT fields only): Prefixes any non-empty cells and `Default` (if specified) with provided prefix text. To prefix the column 0 implicit 'name' field, use `Prefix/<entity prefix>`. E.g., we use `Prefix/PLANET_` in [planets.tsv](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) to prefix all entity names with 'PLANET_'.
@@ -113,7 +130,7 @@ For example usage, our [Planetarium](https://www.ivoyager.dev/planetarium/) uses
 
 For scientific or educational apps it is important to know and correctly represent data precision in GUI. To obtain a float value's original file precision in significant digits, specify `enable_precisions = true` in the `postprocess_tables()` call. You can then access float precisions via the 'precisions' dictionary or 'get_precision' methods in IVTableData. (It's up to you to use precision in your GUI display. Keep in mind that unit-conversion will cause values like '1.0000001' if you don't do any string formatting.)
 
-See warning above about .csv/.tsv editors. If you must use Excel or another 'smart' editor, then prefix all numbers with ' or _ to prevent modification!
+See warning above about .csv/.tsv editors above. If you must use Excel or another 'smart' editor, then prefix all floats with underscore (_) to prevent modification!
 
 Significant digits are counted from the left-most non-0 digit to the right-most digit if decimal is present, or to the right-most non-0 digit if decimal is not present, ignoring the exponential. Examples:
 
@@ -126,7 +143,7 @@ Significant digits are counted from the left-most non-0 digit to the right-most 
 * '1.0010' (5 significant digits)
 * '0.0010' (2 significant digits)
 
-Additionally, **any** number that is prefixed with '~' is considered a zero-precision value (0 significant digits). We use this in our Planetarium to display values such as '~1 km'.
+Additionally, any number that is prefixed with '~' is considered a 'zero-precision' value (0 significant digits). We use this in our Planetarium to display GUI text like '~1 km'.
 
 ## DB_ENTITIES_MOD Format
 
@@ -181,7 +198,7 @@ Required specifier: `@ENUM_X_ENUM[=<table_name>]` (table_name defaults to the ba
 Required directive: `@DATA_TYPE=<Type>`  
 Optional directives: `@DATA_DEFAULT=<Default>`, `@DATA_UNIT=<Unit>`, `@TRANSPOSE`, `@DONT_PARSE`
 
-This format creates an array-of-arrays data structure where data is indexed [row_enumeration][column_enumeration] or the transpose if `@TRANSPOSE` is specified. All cells in the table have the same Type, Default and Unit (if applicable) specified by data directives above. If not specified, default 'nulls' for the six allowed Types are "", &"", false, NAN, -1 and [].
+This format creates an array-of-arrays data structure where data is indexed [row_enumeration][column_enumeration] or the transpose if `@TRANSPOSE` is specified. All cells in the table have the same Type, Default and Unit (if applicable) specified by data directives above.
 
 Enumerations must be 'known' by the plugin, which means that they were added as row entity names by a DB_ENTITIES, DB_ENTITIES_MOD or ENUMERATION format table, or were added as a 'project_enum' dictionary in the `postprocess_tables()` call.
 

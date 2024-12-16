@@ -21,8 +21,6 @@
 extends EditorImportPlugin
 
 
-const TableResource := preload("table_resource.gd")
-
 
 func _get_importer_name() -> String:
 	return "ivoyager.table_importer"
@@ -69,7 +67,7 @@ func _import(source_path: String, save_path: String, _options: Dictionary,
 	var file := FileAccess.open(source_path, FileAccess.READ)
 	if !file:
 		return FileAccess.get_open_error()
-	var table_res := TableResource.new()
+	var table_res := IVTableResource.new()
 	table_res.import_file(file, source_path)
 	
 	var filename := save_path + "." + _get_save_extension()
