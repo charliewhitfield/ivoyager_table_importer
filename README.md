@@ -1,5 +1,7 @@
 # I, Voyager - Table Importer
 
+**DEPRECIATED:** After v0.0.9, the plugin was split into two new plugins: 'ivoyager_tables' and 'ivoyager_units'. Use those plugins in place of this one!
+
 TL;DR: This Godot Editor plugin imports tables like [this](https://github.com/ivoyager/ivoyager/blob/master/data/solar_system/planets.tsv) and provides access to processed, statically typed data. It can impute defaults, convert floats by specified units, prefix text, convert text enumerations to integers, and more! 
 
 ## Installation
@@ -10,8 +12,8 @@ The plugin directory `ivoyager_table_importer` should be added _directly to your
 
 1. Download and extract the plugin, then add it (in its entirety) to your addons directory, creating an 'addons' directory in your project if needed.
 2. (Recommended) Add as a git submodule. From your project directory, use git command:  
-    `git submodule add https://github.com/ivoyager/ivoyager_table_importer addons/ivoyager_table_importer`  
-    This method will allow you to version-control the plugin from within your project rather than moving directories manually. You'll be able to pull updates, checkout any commit, or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
+	`git submodule add https://github.com/ivoyager/ivoyager_table_importer addons/ivoyager_table_importer`  
+	This method will allow you to version-control the plugin from within your project rather than moving directories manually. You'll be able to pull updates, checkout any commit, or submit pull requests back to us. This does require some learning to use git submodules. (We use [GitKraken](https://www.gitkraken.com/) to make this easier!)
 
 (*Note: This differs from Godot's recomended plugin distribution from inside an empty project, but allows us to version-control our plugins without manual directory operations.)
 
@@ -205,4 +207,3 @@ Enumerations must be 'known' by the plugin, which means that they were added as 
 The upper-left table cell can either be empty or specify row and column entity prefixes delimited by a backslash. E.g., 'RESOURCE_\FACILITY_' prefixes all row names with 'RESOURCE_' and all column names with 'FACILITY_'.
 
 The resulting array-of-arrays structure will always have rows and columns that are sized and ordered according to the enumeration, not the table, if entities are missing or out of order in the table. Data not specified in the table file (omited row or column entities) will be imputed with default value.
-

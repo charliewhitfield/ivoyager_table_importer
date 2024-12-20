@@ -2,11 +2,18 @@
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v0.0.8] - 2024-12-16
+**DEPRECIATED:** After v0.0.9, the plugin was split into two new plugins: 'ivoyager_tables' and 'ivoyager_units'. It should be very straightforward to swap in the two new plugins in place of this one.
+
+## [v0.0.9] - 2024-12-20
 
 Developed using Godot 4.3.
 
-Note: After v0.0.8, we'll be splitting this plugin into two new plugins: 'ivoyager_tables' and 'ivoyager_units'. The existing plugin 'ivoyager_table_importer' will be depreciated. Some changes in v0.0.8 are preparatory for this split. It should be very straightforward to swap in the two new plugins in place of this one. 
+### Fixed
+* Export breaking reference to EditorInterface outside of EditorPlugin.
+
+## [v0.0.8] - 2024-12-16
+
+Developed using Godot 4.3.
 
 ### Added
 * You can optionally supply your own 'unit_conversion_method' when calling postprocess_tables().
@@ -91,6 +98,7 @@ Developed using Godot 4.1.1.
 Initial alpha release!
 
 
+[v0.0.9]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.8...v0.0.9
 [v0.0.8]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.7...v0.0.8
 [v0.0.7]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.6...v0.0.7
 [v0.0.6]: https://github.com/ivoyager/ivoyager_table_importer/compare/v0.0.5...v0.0.6
